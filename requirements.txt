@@ -1,0 +1,8 @@
+fastapi
+uvicorn
+motor
+shortuuid
+qrcode
+segno
+structlog
+user-agents
