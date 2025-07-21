@@ -6,3 +6,4 @@ qrcode
 segno
 structlog
 user-agents
+httpx
