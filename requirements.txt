@@ -2,8 +2,13 @@ fastapi
 uvicorn
 motor
 shortuuid
-qrcode
 segno
 structlog
 user-agents
 httpx
+sentry-sdk
+pydantic-settings
+requests
+jinja2
+python-multipart
+Pillow

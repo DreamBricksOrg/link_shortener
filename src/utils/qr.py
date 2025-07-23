@@ -1,21 +1,18 @@
-import qrcode
 import segno
 from pathlib import Path
 
+from core.config import settings
+
 def generate_qr(slug: str):
-    url = f"https://yourdomain.com/{slug}"
-    static_dir = Path("static")
-    static_dir.mkdir(exist_ok=True)
+    url = f"{settings.BASE_URL}/{slug}"
 
-    png_path = static_dir / f"{slug}.png"
-    svg_path = static_dir / f"{slug}.svg"
+    STATIC_PATH = Path("src/static")
 
-    # PNG with qrcode
-    img = qrcode.make(url)
-    img.save(png_path)
+    png_path = STATIC_PATH / f"{slug}.png"
+    svg_path = STATIC_PATH / f"{slug}.svg"
 
-    # SVG with segno
     qr = segno.make(url)
-    qr.save(svg_path, kind='svg')
+    qr.save(png_path, kind='png', scale=10)
+    qr.save(svg_path, kind='svg', scale=10)
 
     return str(png_path), str(svg_path)
