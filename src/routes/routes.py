@@ -6,6 +6,7 @@ from datetime import datetime
 from fastapi import APIRouter, HTTPException, Request, Form
 from fastapi.responses import RedirectResponse, HTMLResponse
 from fastapi.templating import Jinja2Templates
+from fastapi.encoders import jsonable_encoder
 
 from core.db import db
 from core.config import settings
@@ -47,7 +48,7 @@ async def shorten_link(
         "original_url": url,
         "description": name,
         "callback_url": callback_url,
-        "created_at": datetime.now(),
+        "created_at": datetime.now().isoformat(),
         "qr_png": qr_png,
         "qr_svg": qr_svg
     })
@@ -70,19 +71,26 @@ async def redirect(slug: str, request: Request):
     device_info = parse_user_agent(ua)
     access_log = {
         "slug": slug,
-        "timestamp": datetime.now(),
+        "timestamp": datetime.now().isoformat(),
         "ip": ip,
         "user_agent": ua,
         **device_info
     }
 
-    await db.access_logs.insert_one(access_log)
+    result = await db.access_logs.insert_one(access_log)
+    access_log["_id"] = str(result.inserted_id)
     log.info("Link accessed", slug=slug, ip=ip, **device_info)
 
     if link.get("callback_url"):
         try:
             async with httpx.AsyncClient() as client:
-                await client.post(link["callback_url"], json=access_log, timeout=3.0)
+                await client.post(
+                    link["callback_url"],
+                    json=access_log,
+                    timeout=3.0,
+                    headers={"Content-Type": "application/json"}
+                )
+                log.info("Callback enviado com sucesso", url=link["callback_url"])
         except Exception as e:
             log.warning("Callback failed", error=str(e))
 
