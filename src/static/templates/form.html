@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Link Shortener</title>
+  <meta charset="UTF-8" />
+  <style>
+    body {
+      font-family: sans-serif;
+      max-width: 600px;
+      margin: 40px auto;
+    }
+    input, button {
+      display: block;
+      margin-bottom: 10px;
+      width: 100%;
+      padding: 8px;
+      font-size: 1rem;
+    }
+    #result {
+      margin-top: 20px;
+    }
+    img {
+      max-width: 200px;
+      margin-right: 10px;
+    }
+    .qrcodes {
+      display: flex;
+      gap: 10px;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h1>🔗 Encurtador de Links</h1>
+  <form id="shorten-form">
+    <input type="text" name="name" placeholder="Descrição" required />
+    <input type="url" name="url" placeholder="URL original" required />
+    <input type="url" name="callback_url" placeholder="Callback URL (opcional)" />
+    <input type="text" name="slug" placeholder="Slug personalizado (opcional)" />
+    <button type="submit">Gerar Link</button>
+  </form>
+
+  <div id="result"></div>
+
+  <script>
+    document.getElementById("shorten-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const form = e.target;
+      const data = new FormData(form);
+
+      const response = await fetch("/shorten", {
+        method: "POST",
+        body: data
+      });
+
+      const resultEl = document.getElementById("result");
+      if (!response.ok) {
+        const err = await response.json();
+        resultEl.innerHTML = `<p style="color:red">Erro: ${err.detail}</p>`;
+        return;
+      }
+
+      const result = await response.json();
+      const link = `${window.location.origin}/${result.slug}`;
+      resultEl.innerHTML = `
+        <p><strong>✅ Link criado:</strong> <a href="${link}" target="_blank">${link}</a></p>
+        <div class="qrcodes">
+          <div>
+            <p>QR PNG:</p>
+            <a href="${result.qr_png}" download>
+              <img src="${result.qr_png}" alt="QR PNG">
+            </a>
+          </div>
+          <div>
+            <p>QR SVG:</p>
+            <a href="${result.qr_svg}" download>
+              <img src="${result.qr_svg}" alt="QR SVG">
+            </a>
+          </div>
+        </div>
+      `;
+    });
+  </script>
+</body>
+</html>

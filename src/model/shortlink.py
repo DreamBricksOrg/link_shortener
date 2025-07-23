@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field, HttpUrl
 from typing import Optional
 
-class Link(BaseModel):
+class LinkCreate(BaseModel):
     name: str
     url: HttpUrl
     callback_url: Optional[HttpUrl] = None

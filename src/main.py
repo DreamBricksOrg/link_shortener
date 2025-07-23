@@ -1,11 +1,14 @@
 import structlog
 import logging
+import os
+from pathlib import Path
 
 from sentry_sdk import init as sentry_init
 from sentry_sdk.integrations.asgi import SentryAsgiMiddleware
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from core.config import settings
 from utils.log_sender import LogSender
@@ -41,6 +44,9 @@ log_sender = LogSender(
     upload_delay=120
 )
 
+BASE_DIR = Path(__file__).resolve().parent
+STATIC_DIR = os.path.join(BASE_DIR, "static")
+
 app = FastAPI()
 app.add_middleware(SentryAsgiMiddleware)
 
@@ -50,5 +56,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.mount("/src/static", StaticFiles(directory="src/static"), name="src-static")
 
 app.include_router(rest_router)

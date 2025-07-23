@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Testar Redirecionamento</title>
+</head>
+<body>
+    <h1>Testar /{slug}</h1>
+    <form method="get" action="/" onsubmit="redirectToSlug(event)">
+        <label>Slug:</label>
+        <input type="text" id="slug" required>
+        <button type="submit">Acessar</button>
+    </form>
+
+    <script>
+        function redirectToSlug(event) {
+            event.preventDefault();
+            const slug = document.getElementById('slug').value;
+            window.location.href = `/${slug}`;
+        }
+    </script>
+</body>
+</html>
