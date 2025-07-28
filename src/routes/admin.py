@@ -2,18 +2,28 @@ import jwt
 import structlog
 import csv
 import io
-from fastapi import APIRouter, Depends, HTTPException, Query, Path, status, Security, Request
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from fastapi.responses import StreamingResponse
 from typing import Optional, Any
 from bson import ObjectId
+
+from fastapi import APIRouter, Depends, HTTPException, Query, Path, status, Security, Request
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.responses import StreamingResponse, HTMLResponse
+from fastapi.templating import Jinja2Templates
+
 from datetime import datetime, timezone, date, time
 from core.config import settings
 from core.db import db
 
+
+router = APIRouter(prefix="/admin")
 log = structlog.get_logger()
 bearer = HTTPBearer(auto_error=False)
-router = APIRouter(prefix="/admin")
+templates = Jinja2Templates(directory="src/static/templates")
+
+
+@router.get("/", response_class=HTMLResponse)
+async def index(request: Request):
+    return templates.TemplateResponse("admin.html", {"request": request})
 
 # Admin auth
 async def admin_required(

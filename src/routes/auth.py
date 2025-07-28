@@ -1,13 +1,25 @@
-from fastapi import APIRouter, HTTPException, Depends, Header, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials, OAuth2PasswordRequestForm
-from schemas.user import TokenResponse, CreateUserRequest
+import jwt
+import bcrypt
+from datetime import datetime, timezone, timedelta
+
+from fastapi import APIRouter, HTTPException, Depends, Header, Request
+from fastapi.security import HTTPBearer, OAuth2PasswordRequestForm
+from fastapi.responses import HTMLResponse
+from fastapi.templating import Jinja2Templates
+
 from core.config import settings
 from core.db import db
-from datetime import datetime, timezone, timedelta
-import jwt, bcrypt
+from schemas.user import TokenResponse, CreateUserRequest
+
 
 router = APIRouter(prefix="/auth")
 security = HTTPBearer()
+templates = Jinja2Templates(directory="src/static/templates")
+
+
+@router.get("/", response_class=HTMLResponse)
+async def index(request: Request):
+    return templates.TemplateResponse("auth.html", {"request": request})
 
 # Admin Login via JWT
 def generate_jwt(username: str, role: str):

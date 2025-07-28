@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Login Admin</title>
+  <style>
+    body { font-family: sans-serif; max-width: 400px; margin: 2rem auto; }
+    label { display: block; margin: .5rem 0; }
+    button { margin-top: 1rem; }
+    pre { background: #f4f4f4; padding: 1rem; white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  <h1>Login de Administrador</h1>
+  <form id="form">
+    <label>Usuário:
+      <input name="username" required>
+    </label>
+    <label>Senha:
+      <input type="password" name="password" required>
+    </label>
+    <button type="submit">Entrar</button>
+  </form>
+  <pre id="out"></pre>
+
+  <script>
+    const out = document.getElementById('out');
+    document.getElementById('form').addEventListener('submit', async e => {
+      e.preventDefault();
+      out.textContent = 'Autenticando…\n';
+      const f = e.target;
+      const formBody = new URLSearchParams();
+      formBody.append('username', f.username.value);
+      formBody.append('password', f.password.value);
+
+      const res = await fetch('/auth/login', {
+        method: 'POST',
+        headers: {'Content-Type':'application/x-www-form-urlencoded'},
+        body: formBody.toString()
+      });
+
+      if (!res.ok) {
+        out.textContent += `Falha: ${res.status}`;
+        return;
+      }
+
+      const { accessToken } = await res.json();
+      localStorage.setItem('adminToken', accessToken);
+      out.textContent += 'Login OK! Token armazenado.\n';
+
+      // ** aqui fazemos o redirecionamento **
+      window.location.href = '/admin';
+    });
+  </script>
+</body>
+</html>
