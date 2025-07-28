@@ -50,7 +50,8 @@ async def shorten_link(
         "callback_url": callback_url,
         "created_at": datetime.now().isoformat(),
         "qr_png": qr_png,
-        "qr_svg": qr_svg
+        "qr_svg": qr_svg,
+        "status": "valid"
     })
 
     log.info("Link created", slug=slug, url=url)

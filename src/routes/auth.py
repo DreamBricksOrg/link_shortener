@@ -1,0 +1,71 @@
+import jwt
+import bcrypt
+from datetime import datetime, timezone, timedelta
+
+from fastapi import APIRouter, HTTPException, Depends, Header, Request
+from fastapi.security import HTTPBearer, OAuth2PasswordRequestForm
+from fastapi.responses import HTMLResponse
+from fastapi.templating import Jinja2Templates
+
+from core.config import settings
+from core.db import db
+from schemas.user import TokenResponse, CreateUserRequest
+
+
+router = APIRouter(prefix="/auth")
+security = HTTPBearer()
+templates = Jinja2Templates(directory="src/static/templates")
+
+
+@router.get("/", response_class=HTMLResponse)
+async def index(request: Request):
+    return templates.TemplateResponse("auth.html", {"request": request})
+
+# Admin Login via JWT
+def generate_jwt(username: str, role: str):
+    expire = datetime.now(timezone.utc) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    payload = {"sub": username, "role": role, "exp": expire}
+    return jwt.encode(payload, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
+
+@router.post("/login", response_model=TokenResponse)
+async def login(form_data: OAuth2PasswordRequestForm = Depends()):
+    user = await db.users.find_one({"username": form_data.username})
+    if not user:
+        raise HTTPException(401, "Credenciais inválidas")
+    if not bcrypt.checkpw(form_data.password.encode(), user["password"].encode()):
+        raise HTTPException(401, "Credenciais inválidas")
+
+    payload = {
+        "sub":  user["username"],
+        "role": user.get("role", "user"),
+        "exp":  datetime.now(timezone.utc) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    }
+    token = jwt.encode(payload, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
+    return TokenResponse(accessToken=token, expiresIn=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60)
+
+# User creation Safe Security
+@router.post("/create", status_code=201)
+async def create_admin_user(
+    data: CreateUserRequest,
+    authorization: str = Header(..., alias="Authorization")
+):
+    parts = authorization.split()
+    if len(parts) != 2 or parts[0].lower() != "bearer":
+        raise HTTPException(400, "Authorization header malformado")
+    token = parts[1]
+
+    if token != settings.ADMIN_CREATION_TOKEN:
+        raise HTTPException(403, "Token de criação inválido")
+
+    existing = await db.users.find_one({"username": data.username})
+    if existing:
+        raise HTTPException(400, "Username já existe")
+
+    salt = bcrypt.gensalt()
+    hashed = bcrypt.hashpw(data.password.encode(), salt).decode()
+    await db.users.insert_one({
+        "username": data.username,
+        "password": hashed
+    })
+
+    return {"success": True, "message": "Usuário criado"}
