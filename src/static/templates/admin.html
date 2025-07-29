@@ -38,7 +38,7 @@
     const adminToken = localStorage.getItem('adminToken');
     if (!adminToken) {
       alert('Faça login como admin primeiro.');
-      location.href = '/auth/login';
+      location.href = '/auth/';
     }
 
     const filters = {
@@ -67,7 +67,7 @@
 
       if (res.status === 401) {
         alert("Sessão expirada.");
-        return location.href = "/auth/login";
+        return location.href = "/auth/";
       }
 
       const json = await res.json();
