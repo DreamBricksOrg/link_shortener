@@ -155,15 +155,18 @@ async def export_shortlinks(
                 doc.get("original_url", ""),
                 doc.get("callback_url", ""),
                 doc.get("status", ""),
-                doc.get("createdAt").isoformat(),
+                doc.get("createdAt"),
                 doc.get("qr_png", ""),
                 doc.get("qr_svg", "")
             ])
             yield buf.getvalue()
             buf.seek(0); buf.truncate(0)
 
+    now = datetime.now().strftime("%Y%m%d-%H%M")
+    filename = f"shortlinks-{slug}-{now}.csv"
+
     headers = {
-        "Content-Disposition": 'attachment; filename="links.csv"',
+        "Content-Disposition": f"attachment;filename={filename}",
         "Content-Type": "text/csv; charset=utf-8"
     }
     log.info("links-exported", filters=filters)
@@ -244,3 +247,45 @@ async def delete_link(
         )
     log.info("link-deleted", id=link_id)
     return  # 204 No Content
+
+@router.get("/links/{slug}/logs", dependencies=[Depends(admin_required)])
+async def get_link_access_logs(slug: str, limit: int = 3):
+    try:
+        cursor = db.access_logs.find({"slug": slug}).sort("timestamp", -1).limit(limit + 1)
+        result = []
+        async for log in cursor:
+            log["_id"] = str(log["_id"])
+            result.append(log)
+
+        if not result:
+            raise HTTPException(status_code=404, detail="Nenhum log de acesso encontrado para este link.")
+
+        return result
+
+    except Exception as e:
+        log.error("Erro ao buscar logs", error=str(e))
+        raise HTTPException(status_code=500, detail="Erro interno ao buscar logs.")
+
+@router.get("/links/{slug}/logs/export", dependencies=[Depends(admin_required)])
+async def export_access_logs(slug: str):
+    logs_cursor = db.access_logs.find({"slug": slug}).sort("timestamp", -1)
+    logs = []
+    async for log in logs_cursor:
+        logs.append(log)
+
+    if not logs:
+        raise HTTPException(status_code=404, detail="Nenhum log encontrado")
+
+    output = io.StringIO()
+    writer = csv.DictWriter(output, fieldnames=logs[0].keys())
+    writer.writeheader()
+    writer.writerows(logs)
+
+    now = datetime.now().strftime("%Y%m%d-%H%M")
+    filename = f"accesslog-{slug}-{now}.csv"
+
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )

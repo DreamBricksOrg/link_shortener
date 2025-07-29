@@ -12,3 +12,7 @@ requests
 jinja2
 python-multipart
 Pillow
+PyJWT
+bcrypt
+pytest
+pytest-asyncio

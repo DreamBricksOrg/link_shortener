@@ -19,7 +19,7 @@ templates = Jinja2Templates(directory="src/static/templates")
 
 @router.get("/", response_class=HTMLResponse)
 async def index(request: Request):
-    return templates.TemplateResponse("auth.html", {"request": request})
+    return templates.TemplateResponse("login.html", {"request": request})
 
 # Admin Login via JWT
 def generate_jwt(username: str, role: str):

@@ -10,6 +10,8 @@
     label { margin-right: 1rem; }
     input[type="text"], select, input[type="date"] { margin-right: 0.5rem; }
     .status { margin-top: 0.5rem; color: green; }
+    a[id^="toggle-"]::before { content: "▶ "; display: inline-block; transition: transform 0.2s ease; }
+    a.expanded::before { content: "▼ "; }
   </style>
 </head>
 <body>
@@ -36,7 +38,7 @@
     const adminToken = localStorage.getItem('adminToken');
     if (!adminToken) {
       alert('Faça login como admin primeiro.');
-      location.href = '/login';
+      location.href = '/auth/login';
     }
 
     const filters = {
@@ -65,7 +67,7 @@
 
       if (res.status === 401) {
         alert("Sessão expirada.");
-        return location.href = "/login";
+        return location.href = "/auth/login";
       }
 
       const json = await res.json();
@@ -90,7 +92,19 @@
           <div>Original: <a href="${link.original_url}" target="_blank">${link.original_url}</a></div>
           <div>Status: ${link.status}</div>
           <div>Criado em: ${new Date(link.createdAt).toLocaleString()}</div>
-          <div><code>${link.qr_png || ''}</code></div>
+          <div>
+            ${link.qr_png ? `<a href="${link.qr_png}" download target="_blank">
+              <img src="${link.qr_png}" alt="QR code" style="height: 120px">
+            </a>` : ''}
+            ${link.qr_svg ? `<a href="${link.qr_svg}" download target="_blank">
+              <img src="${link.qr_svg}" alt="QR code" style="height: 120px">
+            </a>` : ''}
+          </div>
+          <div>
+            <a href="javascript:void(0)" onclick="showAccessLog('${link.slug}')" id="toggle-${link.slug}">access_log</a>
+            <pre id="log-${link.slug}" style="display:none; background:#eee; padding:1rem; overflow-x:auto;"></pre>
+          </div>
+          <div id="log-${link.slug}" style="display: none; white-space: pre-wrap; background: #f4f4f4; border: 1px solid #ccc; padding: 10px; margin-top: 0.5rem;"></div>
           <label>Descrição: <input type="text" id="desc-${link.id}" value="${link.description || ''}"></label>
           <label>URL Original: <input type="text" id="orig-${link.id}" value="${link.original_url || ''}"></label>
           <label>Callback: <input type="text" id="cb-${link.id}" value="${link.callback_url || ''}"></label>
@@ -139,25 +153,96 @@
 
     async function exportCSV() {
       const params = new URLSearchParams();
+      const activeFilters = [];
+
       for (const [id, key] of Object.entries(filters)) {
         const val = document.getElementById(id).value;
-        if (val) params.append(key, val);
+        if (val) {
+          params.append(key, val);
+          activeFilters.push(`${key}-${val}`);
+        }
       }
 
       const res = await fetch(`/admin/links/export?${params}`, {
         headers: { 'Authorization': 'Bearer ' + adminToken }
       });
 
-      if (!res.ok) return alert("Erro ao exportar.");
+      if (!res.ok) {
+        alert("Erro ao exportar.");
+        return;
+      }
 
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
+
+      const date = new Date().toISOString().slice(0, 10);
+      const slugPart = activeFilters.length ? activeFilters.join("_") : "all";
+
       const a = document.createElement("a");
+      a.download = `${slugPart}_logs_${date}.csv`;
       a.href = url;
-      a.download = "links.csv";
       a.click();
       URL.revokeObjectURL(url);
     }
+
+    async function showAccessLog(slug) {
+      const pre = document.getElementById(`log-${slug}`);
+      const toggle = document.getElementById(`toggle-${slug}`);
+      const expanded = toggle.classList.toggle("expanded");
+
+      if (!expanded) {
+        pre.style.display = "none";
+        pre.textContent = "";
+        const btn = document.getElementById(`export-${slug}`);
+        if (btn) btn.remove();
+        return;
+      }
+
+      const res = await fetch(`/admin/links/${slug}/logs`, {
+        headers: { 'Authorization': 'Bearer ' + adminToken }
+      });
+
+      if (!res.ok) {
+        pre.textContent = "Erro ao buscar logs.";
+        pre.style.display = "block";
+        return;
+      }
+
+      const logs = await res.json();
+      const displayLogs = logs.slice(0, 3);
+      let text = JSON.stringify(displayLogs, null, 2);
+      if (logs.length > 3) text += `\n...`;
+
+      pre.textContent = text;
+      pre.style.display = "block";
+
+      if (!document.getElementById(`export-${slug}`)) {
+        const btn = document.createElement("button");
+        btn.textContent = "Exportar CSV";
+        btn.id = `export-${slug}`;
+        btn.onclick = async () => {
+          const res = await fetch(`/admin/links/${slug}/logs/export`, {
+            headers: { 'Authorization': 'Bearer ' + adminToken }
+          });
+
+          if (!res.ok) {
+            alert("Erro ao exportar.");
+            return;
+          }
+
+          const blob = await res.blob();
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          const date = new Date().toISOString().slice(0, 10);
+          a.download = `${slug}_logs_${date}.csv`;
+          a.href = url;
+          a.click();
+          URL.revokeObjectURL(url);
+        };
+        pre.parentNode.insertBefore(btn, pre.nextSibling);
+      }
+    }
+
   </script>
 </body>
 </html>
