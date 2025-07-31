@@ -1,19 +1,22 @@
 import jwt
 import structlog
+import shortuuid
 import csv
 import io
+
 from typing import Optional, Any
 from bson import ObjectId
+from datetime import datetime, timezone, date, time
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Path, status, Security, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Path, status, Security, Request, Form
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.responses import StreamingResponse, HTMLResponse
 from fastapi.templating import Jinja2Templates
 
-from datetime import datetime, timezone, date, time
 from core.config import settings
 from core.db import db
-
+from schemas.shortlink import ShortenResponse
+from utils.qr import generate_qr
 
 router = APIRouter(prefix="/admin")
 log = structlog.get_logger()
@@ -24,6 +27,10 @@ templates = Jinja2Templates(directory="src/static/templates")
 @router.get("/", response_class=HTMLResponse)
 async def index(request: Request):
     return templates.TemplateResponse("admin.html", {"request": request})
+
+@router.get("/form", response_class=HTMLResponse)
+async def index(request: Request):
+    return templates.TemplateResponse("form.html", {"request": request})
 
 # Admin auth
 async def admin_required(
@@ -40,6 +47,38 @@ async def admin_required(
     except jwt.PyJWTError:
         raise HTTPException(401, "Token inválido")
     return payload
+
+@router.post("/shorten", dependencies=[Depends(admin_required)], response_model=ShortenResponse)
+async def shorten_link(
+    name: str = Form(...),
+    url: str = Form(...),
+    callback_url: str = Form(None),
+    slug: str = Form(None),
+):
+    slug = slug or shortuuid.uuid()[:6]
+    if await db.links.find_one({"slug": slug}):
+        raise HTTPException(status_code=409, detail="Slug já está em uso.")
+    qr_png_path, qr_svg_path = generate_qr(slug)
+    base_url = settings.BASE_URL
+    qr_png =f"{base_url}/{qr_png_path}"
+    qr_svg =f"{base_url}/{qr_svg_path}"
+    await db.links.insert_one({
+        "slug": slug,
+        "original_url": url,
+        "description": name,
+        "callback_url": callback_url,
+        "createdAt": datetime.now().isoformat(),
+        "qr_png": qr_png,
+        "qr_svg": qr_svg,
+        "status": "valid"
+    })
+
+    log.info("Link created", slug=slug, url=url)
+    return ShortenResponse(
+        slug=slug,
+        qr_png=qr_png,
+        qr_svg=qr_svg
+    )
 
 @router.get("/links", dependencies=[Depends(admin_required)], response_model=Any)
 async def list_shortlinks(
