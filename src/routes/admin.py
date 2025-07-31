@@ -3,6 +3,7 @@ import structlog
 import shortuuid
 import csv
 import io
+import os
 
 from typing import Optional, Any
 from bson import ObjectId
@@ -219,10 +220,10 @@ async def get_shortlink(
     try:
         oid = ObjectId(link_id)
     except Exception:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="ID inválido")
+        raise HTTPException(status_code=400, detail="ID inválido")
     doc = await db.links.find_one({'_id': oid})
     if not doc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Link Encurtado não encontrada")
+        raise HTTPException(status_code=404, detail="Link Encurtado não encontrada")
     doc['id'] = str(doc['_id'])
     return doc
 
@@ -233,6 +234,11 @@ async def update_shortlink(
     original_url: Optional[str] = Query(None),
     callback_url: Optional[str] = Query(None)
 ):
+    try:
+        oid = ObjectId(link_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="ID inválido")
+    
     update_fields = {
         "status": "modified",
         "reviewedAt": datetime.now(timezone.utc),
@@ -247,16 +253,16 @@ async def update_shortlink(
         update_fields["callback_url"] = callback_url
 
     result = await db.links.update_one(
-        {"_id": link_id},
+        {"_id": oid},
         {"$set": update_fields}
     )
     if result.modified_count == 0:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
+            status_code=404,
             detail="Link encurtado não encontrado ou sem alterações"
         )
 
-    doc = await db.links.find_one({"_id": link_id})
+    doc = await db.links.find_one({"_id": oid})
     if not doc:
         raise HTTPException(500, "Documento não existe")
 
@@ -274,32 +280,58 @@ async def update_shortlink(
         "qr_svg": doc.get("qr_svg"),
     }
 
-@router.delete("/links/{link_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/links/{link_id}", status_code=204)
 async def delete_link(
-    link_id: str = Path(..., description="ID do link encurtado a ser excluída")
+    link_id: str = Path(..., description="ID do link encurtado a ser excluído")
 ):
-    result = await db.links.delete_one({"_id": link_id})
-    if result.deleted_count == 0:
+    try:
+        oid = ObjectId(link_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="ID inválido")
+    link = await db.links.find_one({"_id": oid})
+    if not link:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
+            status_code=404,
             detail="Link encurtado não encontrado"
         )
-    log.info("link-deleted", id=link_id)
+
+    slug = link["slug"]
+    timestamp = datetime.now().strftime("%Y-%m-%d")
+    new_slug = f"{slug}_deleted_{timestamp}"
+
+    # Atualizar os access_logs com o novo slug
+    await db.access_logs.update_many(
+        {"slug": slug},
+        {"$set": {"slug": new_slug}}
+    )
+
+    await db.links.delete_one({"_id": oid})
+
+    # Remover arquivos QR da pasta /src/static
+    for ext in ["png", "svg"]:
+        path = f"./src/static/{slug}.{ext}"
+        try:
+            os.remove(path)
+            log.info("qr-code-deleted", path=path)
+        except FileNotFoundError:
+            log.warning("qr-code-not-found", path=path)
+
+    log.info("link-deleted", id=link_id, slug=slug)
     return  # 204 No Content
 
 @router.get("/links/{slug}/logs", dependencies=[Depends(admin_required)])
 async def get_link_access_logs(slug: str, limit: int = 3):
     try:
-        cursor = db.access_logs.find({"slug": slug}).sort("timestamp", -1).limit(limit + 1)
-        result = []
-        async for log in cursor:
-            log["_id"] = str(log["_id"])
-            result.append(log)
+        logs_cursor = db.access_logs.find({"slug": slug}).sort("timestamp", -1).limit(limit + 1)
+        logs = []
+        async for log_doc in logs_cursor:
+            log_doc["_id"] = str(log_doc["_id"])
+            logs.append(log_doc)
 
-        if not result:
+        if not logs:
             raise HTTPException(status_code=404, detail="Nenhum log de acesso encontrado para este link.")
 
-        return result
+        return logs
 
     except Exception as e:
         log.error("Erro ao buscar logs", error=str(e))
