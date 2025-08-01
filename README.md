@@ -8,6 +8,13 @@ Este é um projeto de encurtador de links interno, desenvolvido com **FastAPI**,
 - Redirecionar acessos aos links originais
 - Registrar logs de acesso com IP, data/hora, navegador e dispositivo
 - Executar callbacks HTTP opcionais a cada acesso
+- Acessar painel admin protegido por JWT para criar, exportar, editar e excluir links
+
+✨ Funcionalidades Extras
+
+- Interface admin com listagem, filtros e exportação de CSV
+- Deleção segura: logs são mantidos com slug versionado
+- QR Codes salvos em volume persistente via Docker
 
 ## 🚀 Tecnologias Usadas
 
@@ -15,7 +22,7 @@ Este é um projeto de encurtador de links interno, desenvolvido com **FastAPI**,
 - FastAPI
 - MongoDB (via `motor`)
 - Structlog
-- QR Code (bibliotecas `qrcode` e `segno`)
+- QR Code (`segno`)
 - User-Agent parser (`user-agents`)
 - ShortUUID para geração dos slugs
 - httpx (para envio de callbacks)
@@ -33,7 +40,7 @@ link_shortener/
 │       ├── qr.py             # Geração de QR Codes
 │       ├── log.py            # Logger com structlog
 │       └── device.py         # Extração de info do User-Agent
-├── static/                   # Armazena os QR codes gerados
+├   ├── static/                   # Armazena os QR codes gerados
 ├── requirements.txt
 ├── Dockerfile
 ├── .env.example              # Exemplo de variáveis de ambiente
@@ -56,8 +63,14 @@ uvicorn src.main:app --reload
 
 ```bash
 docker build -t link-shortener .
-docker run -d -p 8000:8000 --env-file .env link-shortener
+docker run -d \
+  --name shortener \
+  -p 5007:5007 \
+  --env-file .env \
+  -v $(pwd)/src/static:/app/src/static \
+  link_shortener
 ```
+✅ Os QR codes serão salvos em src/static e persistem entre recriações do container.
 
 ## 📨 Endpoints
 
@@ -74,7 +87,15 @@ docker run -d -p 8000:8000 --env-file .env link-shortener
 Configure o MongoDB Atlas com a variável no `.env`:
 
 ```env
-MONGO_URI=mongodb+srv://<user>:<password>@<cluster>.mongodb.net/link_db
+BASE_URL=http://oseuhost:5007
+MONGO_URI=mongodb+srv://<user>:<password>@<cluster>.mongodb.net/?retryWrites=true&w=majority&appName=<cluster>
+MONGO_DB=<database>
+LOG_API=<log_api>
+LOG_ID=<log_id>
+ADMIN_CREATION_TOKEN=<admin_token>
+ACCESS_TOKEN_EXPIRE_MINUTES=3600
+JWT_SECRET=<jwt_secret>
+JWT_ALGORITHM=HS256
 ```
 
 ## 📚 Documentação
