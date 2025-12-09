@@ -12,5 +12,5 @@ requests
 jinja2
 python-multipart
 Pillow
-jwt
+PyJWT 
 bcrypt

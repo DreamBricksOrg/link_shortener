@@ -8,9 +8,19 @@ import logging
 
 import httpx
 
+
 logger = logging.getLogger(__name__)
 
-def parse_user_agent(ua_string: str):
+
+def _is_private_ip(ip: str) -> bool:
+    try:
+        ip_obj = ipaddress.ip_address(ip)
+        return ip_obj.is_private or ip_obj.is_loopback or ip_obj.is_reserved
+    except ValueError:
+        return True
+
+
+async def parse_user_agent(ua_string: str):
     ua = parse(ua_string)
     return {
         "is_mobile": ua.is_mobile,
@@ -22,14 +32,6 @@ def parse_user_agent(ua_string: str):
         "os_version": ua.os.version_string,
         "device": ua.device.family,
     }
-
-
-def _is_private_ip(ip: str) -> bool:
-    try:
-        ip_obj = ipaddress.ip_address(ip)
-        return ip_obj.is_private or ip_obj.is_loopback or ip_obj.is_reserved
-    except ValueError:
-        return True
 
 
 async def get_geo_from_ip(ip: Optional[str]) -> Dict[str, Any]:

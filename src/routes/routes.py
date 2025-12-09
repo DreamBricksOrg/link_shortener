@@ -2,7 +2,7 @@ import structlog
 import shortuuid
 import httpx
 
-from datetime import datetime
+from datetime import datetime, timezone
 from urllib.parse import urlparse, urlunparse, parse_qsl, urlencode
 
 from fastapi import APIRouter, HTTPException, Request, Form
@@ -28,25 +28,6 @@ async def index(request: Request):
 @router.get("/alive")
 async def alive():
     return "Alive"
-
-
-def _merge_query_strings(base_url: str, incoming_query: str) -> str:
-    """
-    Junta a query string da URL base com a query da requisição.
-    - Se a base já tiver query (?utm=lego) e a requisição trouxer (?i=1024),
-      o resultado fica: ?utm=lego&i=1024
-    - Em caso de chave repetida, a query da requisição sobrescreve a da base.
-    """
-    if not incoming_query:
-        return base_url
-
-    parsed = urlparse(base_url)
-    existing_qs = dict(parse_qsl(parsed.query))
-    new_qs = dict(parse_qsl(incoming_query))
-    merged_qs = {**existing_qs, **new_qs}
-
-    parsed = parsed._replace(query=urlencode(merged_qs, doseq=True))
-    return urlunparse(parsed)
 
 
 @router.post("/shorten", response_model=ShortenResponse)
@@ -88,69 +69,57 @@ async def shorten_link(
 
 
 @router.post("/shorten-link", response_model=ShortenLinkResponse)
-async def create_or_get_base_link(
-    payload: ShortenLinkRequest,
-):
+async def create_or_get_base_link(payload: ShortenLinkRequest):
     """
-    Cria ou recupera um 'base link' por projeto + destination.
-    - Se já existir um link com (description=project, original_url=destination, status!=deleted),
-      ele retorna o existente.
-    - Se não existir, cria um novo slug (ou usa o slug enviado), gera QR base e salva em `links`.
+    Cria um link encurtado a partir de ShortenLinkRequest.
+    - Chama UMA vez com original_url = URL base da campanha
+    - Define slug
+    - Chamadas subsequentes com o mesmo original_url retornam o mesmo slug
     """
-    project = payload.project.strip()
-    destination = str(payload.destination)
-    callback_url = str(payload.callback_url) if payload.callback_url else None
 
-    existing = await db.links.find_one(
-        {
-            "description": project,
-            "original_url": destination,
-            "status": {"$ne": "deleted"},
-        }
-    )
+    slug = payload.slug or shortuuid.uuid()[:6]
 
+    existing = await db.links.find_one({"slug": slug})
     if existing:
-        slug = existing["slug"]
-    else:
-        slug = payload.slug or shortuuid.uuid()[:6]
-        if await db.links.find_one({"slug": slug}):
-            raise HTTPException(
-                status_code=409,
-                detail="Slug já está em uso.",
-            )
-
-        qr_png_path, qr_svg_path = generate_qr(slug)
-        base_url = settings.BASE_URL
-
-        qr_png = f"{base_url}/{qr_png_path}"
-        qr_svg = f"{base_url}/{qr_svg_path}"
-
-        doc = {
-            "slug": slug,
-            "original_url": destination,
-            "description": project,
-            "callback_url": callback_url,
-            "createdAt": datetime.now().isoformat(),
-            "qr_png": qr_png,
-            "qr_svg": qr_svg,
-            "status": "valid",
-        }
-
-        await db.links.insert_one(doc)
-        log.info(
-            "base-link-created",
-            slug=slug,
-            destination=destination,
-            project=project,
+        raise HTTPException(
+            status_code=409,
+            detail="Slug já está em uso.",
         )
+
+    now = datetime.now(timezone.utc)
+
+    doc = {
+        "original_url": str(payload.original_url),
+        "slug": slug,
+        "title": payload.title,
+        "notes": payload.notes,
+        "tags": payload.tags or [],
+        "is_active": payload.is_active,
+        "created_at": now,
+        "updated_at": None,
+        "expires_at": payload.expires_at,
+        "max_clicks": payload.max_clicks,
+        "click_count": 0,
+    }
+
+    result = await db.links.insert_one(doc)
 
     short_url = f"{settings.BASE_URL.rstrip('/')}/{slug}"
 
     return ShortenLinkResponse(
-        project=project,
-        destination=destination,
+        id=str(result.inserted_id),
+        original_url=doc["original_url"],
         slug=slug,
         short_url=short_url,
+        title=doc["title"],
+        notes=doc["notes"],
+        tags=doc["tags"],
+        is_active=doc["is_active"],
+        created_at=doc["created_at"],
+        updated_at=doc["updated_at"],
+        expires_at=doc["expires_at"],
+        max_clicks=doc["max_clicks"],
+        click_count=doc["click_count"],
     )
 
 
@@ -188,6 +157,8 @@ async def redirect(slug: str, request: Request):
 
     device_info = await parse_user_agent(ua)
     geo_info = await get_geo_from_ip(ip)
+    device_info.pop("ip", None)
+    geo_info.pop("ip", None)
 
     access_log = {
         "slug": slug,
