@@ -1,0 +1,106 @@
+name: Deploy to Prod
+
+on:
+  push:
+    tags:
+      - 'v*'
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: prod-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy-prod:
+    name: Deploy (Prod)
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      SSH_PORT: ${{ secrets.PORT || '22' }}
+      ARCHIVE_NAME: linkshortener_${{ github.ref_name }}_${{ github.sha }}.tar.gz
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Definir variáveis de versão/arquivo
+        id: vars
+        run: |
+          VERSION="${GITHUB_REF_NAME}"
+          SHORT_SHA="$(git rev-parse --short HEAD)"
+          ARCHIVE="linkshortener_${VERSION}_${SHORT_SHA}.tar.gz"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "short_sha=$SHORT_SHA" >> $GITHUB_OUTPUT
+          echo "archive=$ARCHIVE" >> $GITHUB_OUTPUT
+
+      - name: Garantir que a tag aponta para main
+        run: |
+          git fetch origin main
+          # Falha se o commit da tag não for proveninete de main
+          git merge-base --is-ancestor ${{ github.sha }} origin/main || {
+            echo "::error ::A tag não aponta para um commit da branch main. Abortando deploy."
+            exit 1
+          }
+
+      - name: Debug secrets
+        run: |
+          test -n "${{ secrets.SSH_KEY }}" && echo "SSH_KEY set" || echo "SSH_KEY missing"
+          test -n "${{ secrets.HOST_PROD }}" && echo "HOST_PROD set" || echo "HOST_PROD missing"
+          test -n "${{ secrets.USER_PROD }}" && echo "USER_PROD set" || echo "USER_PROD missing"
+          test -n "${{ secrets.REMOTE_PATH_PROD }}" && echo "REMOTE_PATH_PROD ok" || echo "REMOTE_PATH_PROD missing"
+
+      - name: Configurar SSH para acesso ao servidor Prod
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          # se o secret KNOWN_HOSTS_PROD estiver vazio, evita erro adicionando fallback
+          if [ -n "${{ secrets.KNOWN_HOSTS_PROD }}" ]; then
+            echo "${{ secrets.KNOWN_HOSTS_PROD }}" >> ~/.ssh/known_hosts
+          else
+            ssh-keyscan -H "${{ secrets.HOST_PROD }}" >> ~/.ssh/known_hosts 2>/dev/null
+          fi
+
+      - name: Empacotamento
+        run: |
+          git config --global core.autocrlf false
+          git archive --format=tar.gz --output "${{ steps.vars.outputs.archive }}" "${GITHUB_SHA}"
+          ls -lh
+
+      - name: Enviar pacote para o servidor (scp)
+        run: |
+          scp -P "${{ env.SSH_PORT }}" -i ~/.ssh/id_rsa -o StrictHostKeyChecking=yes \
+            "${{ steps.vars.outputs.archive }}" \
+            "${{ secrets.USER_PROD }}@${{ secrets.HOST_PROD }}:/tmp/${{ steps.vars.outputs.archive }}"
+
+      - name: Deploy remoto (ssh)
+        env:
+          SSH_PORT: ${{ secrets.PORT || '22' }}
+          APP_DIR: ${{ secrets.REMOTE_PATH_PROD || '/opt/logcenter' }}
+          ENV_NAME: ${{ secrets.ENV_PROD }}
+          HOST: ${{ secrets.HOST_PROD }}
+          USER: ${{ secrets.USER_PROD }}
+          ARCHIVE: ${{ steps.vars.outputs.archive }}
+        run: |
+          ssh -p "$SSH_PORT" -i ~/.ssh/id_rsa -o StrictHostKeyChecking=yes \
+            "$USER@$HOST" "
+              set -e
+              echo '[PROD DEPLOY] Iniciando...'
+              mkdir -p \"$APP_DIR\"
+              # preserva .env local do servidor
+              find \"$APP_DIR\" -mindepth 1 -maxdepth 1 ! -name '.env' -exec rm -rf {} +
+              tar -xzf \"/tmp/$ARCHIVE\" -C \"$APP_DIR\"
+              cd \"$APP_DIR\"
+              export ENV=\"$ENV_NAME\"
+              docker compose down || true
+              docker compose up -d --build
+              echo '[PROD DEPLOY] OK'
+            "
+
+
