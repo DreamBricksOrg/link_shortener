@@ -1,0 +1,86 @@
+name: Deploy to Dev
+
+on:
+  push:
+    branches:
+      - dev
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dev-deploy
+  cancel-in-progress: true
+
+jobs:
+  deploy-dev:
+    name: Deploy (Dev)
+    runs-on: ubuntu-latest
+    environment: development
+    env:
+      SSH_PORT: ${{ secrets.PORT || '22' }}
+      ARCHIVE_NAME: linkshortener_dev_${{ github.sha }}.tar.gz
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0 
+
+      - name: Definir variáveis de versão/arquivo
+        id: vars
+        run: |
+          SHORT_SHA="$(git rev-parse --short HEAD)"
+          ARCHIVE="linkshortener_dev_${SHORT_SHA}.tar.gz"
+          echo "short_sha=$SHORT_SHA" >> $GITHUB_OUTPUT
+          echo "archive=$ARCHIVE" >> $GITHUB_OUTPUT
+
+      - name: Configurar SSH para acesso ao servidor Dev
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          # se o secret KNOWN_HOSTS_DEV estiver vazio, usa ssh-keyscan como fallback
+          if [ -n "${{ secrets.KNOWN_HOSTS_DEV }}" ]; then
+            echo "${{ secrets.KNOWN_HOSTS_DEV }}" >> ~/.ssh/known_hosts
+          else
+            ssh-keyscan -H "${{ secrets.HOST_DEV }}" >> ~/.ssh/known_hosts 2>/dev/null
+          fi
+
+      - name: Empacotamento
+        run: |
+          git config --global core.autocrlf false
+          git archive --format=tar.gz --output "${{ steps.vars.outputs.archive }}" "${GITHUB_SHA}"
+          ls -lh "${{ steps.vars.outputs.archive }}"
+
+      - name: Enviar pacote para o servidor (scp)
+        env:
+          HOST: ${{ secrets.HOST_DEV }}
+          USER: ${{ secrets.USER_DEV }}
+        run: |
+          scp -P "${{ env.SSH_PORT }}" -i ~/.ssh/id_rsa -o StrictHostKeyChecking=yes \
+            "${{ steps.vars.outputs.archive }}" \
+            "$USER@$HOST:/tmp/${{ steps.vars.outputs.archive }}"
+
+      - name: Deploy remoto (ssh)
+        env:
+          HOST: ${{ secrets.HOST_DEV }}
+          USER: ${{ secrets.USER_DEV }}
+          APP_DIR: ${{ secrets.REMOTE_PATH_DEV || '/opt/logcenter' }}
+          ENV_NAME: ${{ secrets.ENV_DEV }}
+          ARCHIVE: ${{ steps.vars.outputs.archive }}
+        run: |
+          ssh -p "${{ env.SSH_PORT }}" -i ~/.ssh/id_rsa -o StrictHostKeyChecking=yes \
+            "$USER@$HOST" "
+              set -e
+              echo '[DEV DEPLOY] Iniciando...'
+              mkdir -p \"$APP_DIR\"
+              # preserva .env local do servidor
+              find \"$APP_DIR\" -mindepth 1 -maxdepth 1 ! -name '.env' -exec rm -rf {} +
+              tar -xzf \"/tmp/$ARCHIVE\" -C \"$APP_DIR\"
+              cd \"$APP_DIR\"
+              export ENV=\"$ENV_NAME\"
+              docker compose down || true
+              docker compose up -d --build
+              echo '[DEV DEPLOY] OK'
+            "
