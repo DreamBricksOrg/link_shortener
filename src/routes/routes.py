@@ -1,5 +1,6 @@
 import structlog
 import httpx
+import shortuuid
 
 from datetime import datetime, timezone
 from urllib.parse import urlparse, urlunparse, parse_qsl, urlencode
