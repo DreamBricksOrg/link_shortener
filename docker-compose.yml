@@ -9,4 +9,4 @@ services:
       - PYTHONPATH=/app/src
       - APP_ENV="dev"
     ports:
-      - "5000:5000"
+      - "5001:5001"
