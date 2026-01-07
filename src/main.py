@@ -66,3 +66,7 @@ app.include_router(rest_router)
 app.include_router(auth_router)
 app.include_router(admin_router)
 app.include_router(dash_router)
+
+@app.get("/alive")
+async def alive():
+    return {"status": "ok", "env": "prod"}
