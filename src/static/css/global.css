@@ -1,0 +1,19 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+@font-face {
+    font-family: 'Araboto';
+    src: url('/src/static/fonts/Araboto-Normal-400.ttf');
+}
+
+@font-face {
+    font-family: 'Araboto-Bold';
+    src: url('/src/static/fonts/Araboto-Bold-400.ttf');
+}
+
+body {
+    font-family: 'Araboto', sans-serif;
+}

@@ -4,59 +4,75 @@
   <meta charset="UTF-8">
   <title>Login Admin</title>
   <style>
-    body { font-family: sans-serif; max-width: 400px; margin: 40px auto; }
-    label { display: block; width: 100%; margin: .5rem 0; }
-    input, button {
-      display: block;
-      margin-bottom: 10px;
-      width: 100%;
-      padding: 8px auto;
-      font-size: 1rem;
-    }
-    pre { background: #f4f4f4; padding: 1rem; white-space: pre-wrap; }
+    @import url('/src/static/css/global.css');
+    @import url('/src/static/css/login.css');
   </style>
 </head>
 <body>
-  <h1>Dream Bricks - Shortlinks</h1>
-  <h2>Login de Administrador</h2>
-  <form id="form">
-    <label>Usuário:
-      <input type="text" name="username" required>
-    </label>
-    <label>Senha:
-      <input type="password" name="password" required>
-    </label>
-    <button type="submit">Entrar</button>
-  </form>
-  <pre id="out"></pre>
+  <div class="container">
+    <div class="content">
+      <div class="tittle">
+        <!-- <h1>Dream Bricks - Shortlinks</h1> -->
+         <img src="/src/static/images/logo_sem_fundo.png" alt="" width="30%">
+        <h1>Shortlinks</h1>
+        <h2>Login de Administrador</h2>
+      </div>
+    <form id="form">
+      <label>Usuário:
+        <input type="text" name="username" required>
+      </label>
+      <label>Senha:
+        <input type="password" name="password" required>
+      </label>
+      <button type="submit">Entrar</button>
+    </form>
+    <div class="spinner-container" id="spinner-container">
+      <div class="spinner"></div>
+    </div>
+    <pre id="out" style="display: none;"></pre>
+  </div>
+  </div>  
 
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script>
     const out = document.getElementById('out');
+    const spinnerContainer = document.getElementById('spinner-container');
     document.getElementById('form').addEventListener('submit', async e => {
       e.preventDefault();
-      out.textContent = 'Autenticando…\n';
+      spinnerContainer.style.display = 'block';
+      out.textContent = '';
       const f = e.target;
       const formBody = new URLSearchParams();
       formBody.append('username', f.username.value);
       formBody.append('password', f.password.value);
-
-      const res = await fetch('/auth/login', {
-        method: 'POST',
-        headers: {'Content-Type':'application/x-www-form-urlencoded'},
-        body: formBody.toString()
-      });
-
-      if (!res.ok) {
-        out.textContent += `Falha: ${res.status}`;
-        return;
+      try {
+        const res = await fetch('/auth/login', {
+          method: 'POST',
+          headers: {'Content-Type':'application/x-www-form-urlencoded'},
+          body: formBody.toString()
+        });
+        if (!res.ok) {
+          spinnerContainer.style.display = 'none';
+          Swal.fire({
+            icon: 'error',
+            title: 'Falha ao autenticar',
+            text: `Código: ${res.status}`
+          });
+          return;
+        }
+        const { accessToken } = await res.json();
+        spinnerContainer.style.display = 'none';
+        localStorage.setItem('adminToken', accessToken);
+        out.textContent += 'Login OK! Token armazenado.\n';
+        window.location.href = '/admin/';
+      } catch (err) {
+        spinnerContainer.style.display = 'none';
+        Swal.fire({
+          icon: 'error',
+          title: 'Erro de conexão',
+          text: 'Não foi possível conectar ao servidor.'
+        });
       }
-
-      const { accessToken } = await res.json();
-      localStorage.setItem('adminToken', accessToken);
-      out.textContent += 'Login OK! Token armazenado.\n';
-
-      // ** aqui fazemos o redirecionamento **
-      window.location.href = '/admin/';
     });
   </script>
 </body>
