@@ -1,0 +1,252 @@
+@font-face {
+    font-family: 'Araboto';
+    src: url('/src/static/fonts/Araboto-Normal-400.ttf');
+}
+
+@font-face {
+    font-family: 'Araboto-Bold';
+    src: url('/src/static/fonts/Araboto-Bold-400.ttf');
+}
+
+body {
+    font-family: 'Araboto', sans-serif;
+    background-color: #c7f1ff;
+    margin: 0;
+    padding: 2rem;
+    color: #034a5d;
+}
+
+h1 {
+    text-align: center;
+    color: #034a5d;
+    font-family: 'Araboto-Bold', sans-serif;
+    margin-bottom: 2rem;
+}
+
+/* Controls & Filters */
+.controls {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+}
+
+.filter-form {
+    background-color: #fff;
+    padding: 1.5rem;
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    margin-bottom: 2rem;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+}
+
+.filter-form label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    font-weight: bold;
+    color: #034a5d;
+}
+
+/* Inputs & Buttons shared style */
+input, select, button {
+    padding: 10px;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+    font-family: 'Araboto', sans-serif;
+    font-size: 1rem;
+}
+
+input:focus, select:focus {
+    outline: none;
+    border-color: #42b0d5;
+}
+
+button {
+    background-color: #42b0d5;
+    color: white;
+    border: none;
+    cursor: pointer;
+    font-family: 'Araboto-Bold', sans-serif;
+    text-transform: uppercase;
+    transition: background-color 0.2s;
+}
+
+button:hover {
+    background-color: #369abf;
+}
+
+button:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+}
+
+/* Grid Layout */
+.links-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+}
+
+@media (max-width: 1024px) {
+    .links-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .links-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Card Style */
+.card {
+    background-color: #42b0d5;
+    color: white;
+    padding: 1.5rem;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    transition: transform 0.2s;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid rgba(255,255,255,0.3);
+    padding-bottom: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.slug-title {
+    font-family: 'Araboto-Bold', sans-serif;
+    font-size: 1.2rem;
+}
+
+.card-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+    flex-grow: 1;
+}
+
+.card-body label {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 0.9rem;
+}
+
+.card-body input {
+    background-color: rgba(255,255,255,0.9);
+    border: none;
+    color: #034a5d;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.card-footer {
+    margin-top: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    border-top: 1px solid rgba(255,255,255,0.3);
+    padding-top: 1rem;
+}
+
+.card-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.card-actions button {
+    flex: 1;
+    background-color: white;
+    color: #42b0d5;
+    padding: 8px;
+    font-size: 0.9rem;
+}
+
+.card-actions button:hover {
+    background-color: #f0f0f0;
+}
+
+.btn-delete {
+    color: #d9534f !important;
+}
+
+/* Pagination */
+.pagination {
+    margin-top: 2rem;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 1rem;
+}
+
+.pagination span {
+    font-weight: bold;
+    color: #034a5d;
+}
+
+/* QR Code */
+.qr-container {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin: 10px 0;
+}
+
+.qr-container img {
+    background: white;
+    padding: 5px;
+    border-radius: 5px;
+    width: 80px;
+    height: 80px;
+}
+
+/* Loading Spinner */
+.spinner {
+    border: 4px solid rgba(0, 0, 0, 0.1);
+    border-left-color: #42b0d5;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+    margin: 20px auto;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Modal Custom Styles (for SweetAlert) */
+.log-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+    font-size: 0.9rem;
+    text-align: left;
+}
+
+.log-table th, .log-table td {
+    padding: 8px;
+    border-bottom: 1px solid #eee;
+}
+
+.log-table th {
+    background-color: #f8f9fa;
+    color: #034a5d;
+}

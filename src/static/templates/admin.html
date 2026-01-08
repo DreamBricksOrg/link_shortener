@@ -2,17 +2,10 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Painel Admin - Links Encurtados</title>
-  <style>
-    body { font-family: sans-serif; margin: 2rem; }
-    .controls, .filter-form, .entry { margin-bottom: 1.5rem; }
-    .entry { border-bottom: 1px solid #ccc; padding-bottom: 1rem; }
-    label { margin-right: 1rem; }
-    input[type="text"], select, input[type="date"] { margin-right: 0.5rem; }
-    .status { margin-top: 0.5rem; color: green; }
-    a[id^="toggle-"]::before { content: "▶ "; display: inline-block; transition: transform 0.2s ease; }
-    a.expanded::before { content: "▼ "; }
-  </style>
+  <link rel="stylesheet" href="/src/static/css/admin.css">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body>
   <h1>Admin de Links Encurtados</h1>
@@ -33,13 +26,26 @@
     <button id="apply-filters-btn">Aplicar Filtros</button>
   </div>
 
-  <div id="links-container"></div>
+  <div id="loading-spinner" class="spinner" style="display: none;"></div>
+  <div id="links-container" class="links-grid"></div>
+
+  <div class="pagination" id="pagination" hidden>
+    <button id="prev-page-btn" disabled>Anterior</button>
+    <span id="page-info">Página 1</span>
+    <button id="next-page-btn" disabled>Próxima</button>
+  </div>
 
   <script>
     const adminToken = localStorage.getItem('adminToken');
     if (!adminToken) {
-      alert('Faça login como admin primeiro.');
-      location.href = '/auth/';
+      Swal.fire({
+        icon: 'warning',
+        title: 'Acesso Negado',
+        text: 'Faça login como admin primeiro.',
+        confirmButtonText: 'Ir para Login'
+      }).then(() => {
+        location.href = '/auth/';
+      });
     }
 
     const filters = {
@@ -51,105 +57,211 @@
       'filter-date-to': 'date_to'
     };
 
-    document.getElementById('reload-btn').addEventListener('click', () => loadLinks(true));
-    document.getElementById('apply-filters-btn').addEventListener('click', () => loadLinks(false));
+    let currentPage = 1;
+    const pageSize = 9; // 3 rows of 3 columns
+
+    document.getElementById('reload-btn').addEventListener('click', () => {
+      currentPage = 1;
+      loadLinks(true);
+    });
+    document.getElementById('apply-filters-btn').addEventListener('click', () => {
+      currentPage = 1;
+      loadLinks(false);
+    });
     document.getElementById('export-btn').addEventListener('click', () => exportCSV());
     document.getElementById("shortener-btn").addEventListener("click", () => { window.location.href = "/admin/form/";});
+    
+    document.getElementById('prev-page-btn').addEventListener('click', () => {
+      if (currentPage > 1) {
+        currentPage--;
+        loadLinks(false);
+      }
+    });
+
+    document.getElementById('next-page-btn').addEventListener('click', () => {
+      currentPage++;
+      loadLinks(false);
+    });
 
     async function loadLinks(showControls) {
+      const spinner = document.getElementById('loading-spinner');
+      const container = document.getElementById('links-container');
+      const pagination = document.getElementById('pagination');
+      
+      spinner.style.display = 'block';
+      container.innerHTML = '';
+      pagination.hidden = true;
+
       const params = new URLSearchParams();
+      params.append('page', currentPage);
+      params.append('page_size', pageSize);
+      
       for (const [id, key] of Object.entries(filters)) {
         const val = document.getElementById(id).value;
         if (val) params.append(key, val);
       }
 
-      const res = await fetch(`/admin/links?${params}`, {
-        headers: { 'Authorization': 'Bearer ' + adminToken }
-      });
+      try {
+        const res = await fetch(`/admin/links?${params}`, {
+          headers: { 'Authorization': 'Bearer ' + adminToken }
+        });
 
-      if (res.status === 401) {
-        alert("Sessão expirada.");
-        return location.href = "/auth/";
+        if (res.status === 401) {
+          Swal.fire({
+            icon: 'error',
+            title: 'Sessão Expirada',
+            text: 'Por favor, faça login novamente.'
+          }).then(() => location.href = "/auth/");
+          return;
+        }
+
+        const json = await res.json();
+        // Assume API returns { data: [...], total: ... } or just list. 
+        // Adapting based on typical pagination. If just list, we handle it.
+        const list = Array.isArray(json) ? json : (json.data || []);
+        
+        renderLinks(list);
+        updatePagination(list.length);
+
+        if (showControls) {
+          document.querySelector('.filter-form').hidden = false;
+          document.getElementById('export-btn').hidden = false;
+          document.getElementById('reload-btn').textContent = "Recarregar";
+        }
+      } catch (error) {
+        Swal.fire('Erro', 'Falha ao carregar links.', 'error');
+        console.error(error);
+      } finally {
+        spinner.style.display = 'none';
+        pagination.hidden = false;
       }
+    }
 
-      const json = await res.json();
-      renderLinks(json.data || []);
-
-      if (showControls) {
-        document.querySelector('.filter-form').hidden = false;
-        document.getElementById('export-btn').hidden = false;
-        document.getElementById('reload-btn').textContent = "Recarregar";
-      }
+    function updatePagination(itemsCount) {
+      document.getElementById('page-info').textContent = `Página ${currentPage}`;
+      document.getElementById('prev-page-btn').disabled = currentPage === 1;
+      // If we received fewer items than page size, it's the last page
+      document.getElementById('next-page-btn').disabled = itemsCount < pageSize;
     }
 
     function renderLinks(list) {
       const c = document.getElementById("links-container");
       c.innerHTML = "";
+      
+      if (list.length === 0) {
+        c.innerHTML = '<p style="grid-column: 1/-1; text-align: center;">Nenhum link encontrado.</p>';
+        return;
+      }
+
       list.forEach(link => {
         const div = document.createElement('div');
-        div.className = 'entry';
+        div.className = 'card';
         div.id = `link-${link.id}`;
         div.innerHTML = `
-          <div><strong>${link.slug}</strong> – ${link.description}</div>
-          <div>Original: <a href="${link.original_url}" target="_blank">${link.original_url}</a></div>
-          <div>Status: ${link.status}</div>
-          <div>Criado em: ${new Date(link.createdAt).toLocaleString()}</div>
-          <div>
-            ${link.qr_png ? `<a href="${link.qr_png}" download target="_blank">
-              <img src="${link.qr_png}" alt="QR code" style="height: 120px">
-            </a>` : ''}
-            ${link.qr_svg ? `<a href="${link.qr_svg}" download target="_blank">
-              <img src="${link.qr_svg}" alt="QR code" style="height: 120px">
-            </a>` : ''}
+          <div class="card-header">
+            <span class="slug-title">${link.slug}</span>
+            <span style="font-size: 0.8rem;">${new Date(link.created_at || Date.now()).toLocaleDateString()}</span>
           </div>
-          <div>
-            <a href="javascript:void(0)" onclick="showAccessLog('${link.slug}')" id="toggle-${link.slug}">access_log</a>
-            <pre id="log-${link.slug}" style="display:none; background:#eee; padding:1rem; overflow-x:auto;"></pre>
+          
+          <div class="card-body">
+            <label>
+              Descrição
+              <input type="text" id="desc-${link.id}" value="${link.description || ''}">
+            </label>
+            <label>
+              URL Original
+              <input type="text" id="orig-${link.id}" value="${link.original_url || ''}">
+            </label>
+            <label>
+              Callback URL
+              <input type="text" id="cb-${link.id}" value="${link.callback_url || ''}">
+            </label>
+            
+            <div class="qr-container">
+              ${link.qr_png ? `<a href="${link.qr_png}" download target="_blank" title="Baixar PNG">
+                <img src="${link.qr_png}" alt="QR PNG">
+              </a>` : ''}
+              ${link.qr_svg ? `<a href="${link.qr_svg}" download target="_blank" title="Baixar SVG">
+                <img src="${link.qr_svg}" alt="QR SVG">
+              </a>` : ''}
+            </div>
           </div>
-          <div id="log-${link.slug}" style="display: none; white-space: pre-wrap; background: #f4f4f4; border: 1px solid #ccc; padding: 10px; margin-top: 0.5rem;"></div>
-          <label>Descrição: <input type="text" id="desc-${link.id}" value="${link.description || ''}"></label>
-          <label>URL Original: <input type="text" id="orig-${link.id}" value="${link.original_url || ''}"></label>
-          <label>Callback: <input type="text" id="cb-${link.id}" value="${link.callback_url || ''}"></label>
-          <div class="status" id="status-${link.id}"></div>
-          <button onclick="updateLink('${link.id}')">Salvar</button>
-          <button onclick="deleteLink('${link.id}')">Excluir</button>
+
+          <div class="card-footer">
+            <button onclick="showAccessLog('${link.slug}')">📊 Access Log</button>
+            <div class="card-actions">
+              <button onclick="updateLink('${link.id}')">Salvar</button>
+              <button class="btn-delete" onclick="deleteLink('${link.id}')">Excluir</button>
+            </div>
+            <div class="status" id="status-${link.id}" style="text-align: center; height: 1.2rem;"></div>
+          </div>
         `;
         c.appendChild(div);
       });
     }
 
     async function updateLink(id) {
+      const btn = document.querySelector(`#link-${id} button[onclick^="updateLink"]`);
+      const originalText = btn.textContent;
+      btn.textContent = 'Salvando...';
+      btn.disabled = true;
+
       const params = new URLSearchParams({
         description: document.getElementById(`desc-${id}`).value,
         original_url: document.getElementById(`orig-${id}`).value,
         callback_url: document.getElementById(`cb-${id}`).value,
       });
 
-      const res = await fetch(`/admin/links/${id}?${params}`, {
-        method: "PATCH",
-        headers: { 'Authorization': 'Bearer ' + adminToken }
-      });
+      try {
+        const res = await fetch(`/admin/links/${id}?${params}`, {
+          method: "PATCH",
+          headers: { 'Authorization': 'Bearer ' + adminToken }
+        });
 
-      const el = document.getElementById(`status-${id}`);
-      if (res.ok) {
-        el.textContent = "✔️ Atualizado!";
-      } else {
-        el.textContent = "❌ Erro ao atualizar.";
+        const el = document.getElementById(`status-${id}`);
+        if (res.ok) {
+          el.textContent = "✔️ Atualizado!";
+          setTimeout(() => el.textContent = "", 2000);
+        } else {
+          el.textContent = "❌ Erro ao atualizar.";
+          Swal.fire('Erro', 'Não foi possível atualizar o link.', 'error');
+        }
+      } catch (err) {
+        Swal.fire('Erro', 'Falha na comunicação.', 'error');
+      } finally {
+        btn.textContent = originalText;
+        btn.disabled = false;
       }
     }
 
     async function deleteLink(id) {
-      if (!confirm("Deseja realmente excluir este link?")) return;
-
-      const res = await fetch(`/admin/links/${id}`, {
-        method: "DELETE",
-        headers: { 'Authorization': 'Bearer ' + adminToken }
+      const result = await Swal.fire({
+        title: 'Tem certeza?',
+        text: "Esta ação não pode ser revertida!",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Sim, excluir!',
+        cancelButtonText: 'Cancelar'
       });
 
-      if (res.ok) {
-        document.getElementById(`link-${id}`).remove();
-      } else {
-        alert("Erro ao excluir.");
+      if (result.isConfirmed) {
+        try {
+          const res = await fetch(`/admin/links/${id}`, {
+            method: "DELETE",
+            headers: { 'Authorization': 'Bearer ' + adminToken }
+          });
+
+          if (res.ok) {
+            document.getElementById(`link-${id}`).remove();
+            Swal.fire('Excluído!', 'O link foi removido.', 'success');
+          } else {
+            Swal.fire('Erro', 'Não foi possível excluir o link.', 'error');
+          }
+        } catch (err) {
+          Swal.fire('Erro', 'Falha na comunicação.', 'error');
+        }
       }
     }
 
@@ -165,72 +277,99 @@
         }
       }
 
-      const res = await fetch(`/admin/links/export?${params}`, {
-        headers: { 'Authorization': 'Bearer ' + adminToken }
-      });
+      try {
+        const res = await fetch(`/admin/links/export?${params}`, {
+          headers: { 'Authorization': 'Bearer ' + adminToken }
+        });
 
-      if (!res.ok) {
-        alert("Erro ao exportar.");
-        return;
+        if (!res.ok) throw new Error('Erro ao exportar');
+
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const date = new Date().toISOString().slice(0, 10);
+        const slugPart = activeFilters.length ? activeFilters.join("_") : "all";
+
+        const a = document.createElement("a");
+        a.download = `${slugPart}_logs_${date}.csv`;
+        a.href = url;
+        a.click();
+        URL.revokeObjectURL(url);
+      } catch (err) {
+        Swal.fire('Erro', 'Não foi possível exportar o CSV.', 'error');
       }
-
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-
-      const date = new Date().toISOString().slice(0, 10);
-      const slugPart = activeFilters.length ? activeFilters.join("_") : "all";
-
-      const a = document.createElement("a");
-      a.download = `${slugPart}_logs_${date}.csv`;
-      a.href = url;
-      a.click();
-      URL.revokeObjectURL(url);
     }
 
     async function showAccessLog(slug) {
-      const pre = document.getElementById(`log-${slug}`);
-      const toggle = document.getElementById(`toggle-${slug}`);
-      const expanded = toggle.classList.toggle("expanded");
-
-      if (!expanded) {
-        pre.style.display = "none";
-        pre.textContent = "";
-        const btn = document.getElementById(`export-${slug}`);
-        if (btn) btn.remove();
-        return;
-      }
-
-      const res = await fetch(`/admin/links/${slug}/logs`, {
-        headers: { 'Authorization': 'Bearer ' + adminToken }
+      Swal.fire({
+        title: `Logs de acesso: ${slug}`,
+        html: '<div class="spinner"></div><p>Carregando logs...</p>',
+        showConfirmButton: false,
+        width: '800px'
       });
 
-      if (!res.ok) {
-        pre.textContent = "Erro ao buscar logs.";
-        pre.style.display = "block";
-        return;
+      try {
+        const res = await fetch(`/admin/links/${slug}/logs`, {
+          headers: { 'Authorization': 'Bearer ' + adminToken }
+        });
+
+        if (!res.ok) throw new Error('Falha ao buscar logs');
+
+        const logs = await res.json();
+        
+        let htmlContent = '';
+        if (logs.length === 0) {
+          htmlContent = '<p>Nenhum registro de acesso encontrado.</p>';
+        } else {
+          const rows = logs.slice(0, 50).map(log => `
+            <tr>
+              <td>${new Date(log.created_at || Date.now()).toLocaleString()}</td>
+              <td>${log.ip || '-'}</td>
+              <td>${log.browser || '-'}</td>
+              <td>${log.os || '-'}</td>
+              <td>${log.referer || '-'}</td>
+            </tr>
+          `).join('');
+
+          htmlContent = `
+            <div style="max-height: 400px; overflow-y: auto;">
+              <table class="log-table">
+                <thead>
+                  <tr>
+                    <th>Data</th>
+                    <th>IP</th>
+                    <th>Browser</th>
+                    <th>OS</th>
+                    <th>Referer</th>
+                  </tr>
+                </thead>
+                <tbody>${rows}</tbody>
+              </table>
+            </div>
+            ${logs.length > 50 ? '<p style="margin-top:10px; font-size:0.8rem; color:#666;">Mostrando últimos 50 registros.</p>' : ''}
+            <div style="margin-top: 20px;">
+              <button onclick="exportSingleLog('${slug}')" style="padding: 8px 16px;">Exportar CSV</button>
+            </div>
+          `;
+        }
+
+        Swal.update({
+          html: htmlContent,
+          showConfirmButton: true,
+          confirmButtonText: 'Fechar'
+        });
+
+      } catch (err) {
+        Swal.fire('Erro', 'Não foi possível carregar os logs.', 'error');
       }
+    }
 
-      const logs = await res.json();
-      const displayLogs = logs.slice(0, 3);
-      let text = JSON.stringify(displayLogs, null, 2);
-      if (logs.length > 3) text += `\n...`;
-
-      pre.textContent = text;
-      pre.style.display = "block";
-
-      if (!document.getElementById(`export-${slug}`)) {
-        const btn = document.createElement("button");
-        btn.textContent = "Exportar CSV";
-        btn.id = `export-${slug}`;
-        btn.onclick = async () => {
+    async function exportSingleLog(slug) {
+       try {
           const res = await fetch(`/admin/links/${slug}/logs/export`, {
             headers: { 'Authorization': 'Bearer ' + adminToken }
           });
 
-          if (!res.ok) {
-            alert("Erro ao exportar.");
-            return;
-          }
+          if (!res.ok) throw new Error('Erro ao exportar');
 
           const blob = await res.blob();
           const url = URL.createObjectURL(blob);
@@ -240,11 +379,10 @@
           a.href = url;
           a.click();
           URL.revokeObjectURL(url);
-        };
-        pre.parentNode.insertBefore(btn, pre.nextSibling);
-      }
+        } catch (err) {
+          Swal.fire('Erro', 'Não foi possível exportar os logs.', 'error');
+        }
     }
-
   </script>
 </body>
 </html>

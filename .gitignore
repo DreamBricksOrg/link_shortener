@@ -176,3 +176,5 @@ src/static/input
 src/static/output
 src/static/*.png
 src/static/*.svg
+
+openapi.json
