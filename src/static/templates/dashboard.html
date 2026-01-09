@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Painel Admin - Dashboard</title>
+  <link rel="stylesheet" href="/src/static/css/admin.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <style>
+    /* Dashboard specific overrides/additions */
+    .nav-bar {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 2rem;
+        background: white;
+        padding: 1rem;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    .nav-link {
+        text-decoration: none;
+        color: #666;
+        font-weight: 600;
+        padding: 0.5rem 1rem;
+        border-radius: 4px;
+    }
+    .nav-link.active {
+        background-color: #e3f2fd;
+        color: #0277bd;
+    }
+    .nav-link:hover {
+        background-color: #f5f5f5;
+    }
+
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .stat-card {
+      background-color: white;
+      padding: 1.5rem;
+      border-radius: 10px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .stat-card h3 {
+      margin: 0;
+      color: #666;
+      font-size: 0.9rem;
+      text-transform: uppercase;
+      font-family: 'Araboto', sans-serif;
+    }
+
+    .stat-card .value {
+      font-size: 2.5rem;
+      font-weight: bold;
+      color: #42b0d5;
+      margin-top: 0.5rem;
+      font-family: 'Araboto-Bold', sans-serif;
+    }
+
+    .chart-container {
+      background-color: white;
+      padding: 1.5rem;
+      border-radius: 10px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+      margin-bottom: 2rem;
+      height: 400px;
+      position: relative;
+    }
+
+    .top-links-container {
+      background-color: white;
+      padding: 1.5rem;
+      border-radius: 10px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+    }
+
+    .top-links-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .top-links-table th, .top-links-table td {
+      padding: 12px;
+      text-align: left;
+      border-bottom: 1px solid #eee;
+    }
+
+    .top-links-table th {
+      color: #034a5d;
+      font-family: 'Araboto-Bold', sans-serif;
+    }
+
+    .date-filter {
+        display: flex;
+        justify-content: flex-end;
+        gap: 1rem;
+        margin-bottom: 1rem;
+        align-items: center;
+    }
+
+    @media (max-width: 1024px) {
+        .dashboard-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+
+    @media (max-width: 600px) {
+        .dashboard-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+  </style>
+</head>
+<body>
+  <h1>Dashboard de Acessos</h1>
+
+  <div class="controls" style="justify-content: space-between;">
+    <button onclick="window.location.href='/admin/'">⬅ Voltar para Links</button>
+    <div class="date-filter">
+        <select id="range-select">
+            <option value="7">Últimos 7 dias</option>
+            <option value="30">Últimos 30 dias</option>
+            <option value="90">Últimos 90 dias</option>
+        </select>
+        <button id="refresh-btn">Atualizar</button>
+    </div>
+  </div>
+
+  <div id="loading-spinner" class="spinner"></div>
+
+  <div id="dashboard-content" style="display: none;">
+    <!-- Summary Cards -->
+    <div class="dashboard-grid">
+      <div class="stat-card">
+        <h3>Total de Cliques</h3>
+        <div class="value" id="stat-clicks">0</div>
+      </div>
+      <div class="stat-card">
+        <h3>IPs Únicos</h3>
+        <div class="value" id="stat-ips">0</div>
+      </div>
+      <div class="stat-card">
+        <h3>Links Ativos</h3>
+        <div class="value" id="stat-active">0</div>
+      </div>
+      <div class="stat-card">
+        <h3>Total de Links</h3>
+        <div class="value" id="stat-total">0</div>
+      </div>
+    </div>
+
+    <!-- Main Chart -->
+    <div class="chart-container">
+      <canvas id="clicksChart"></canvas>
+    </div>
+
+    <!-- Top Links -->
+    <div class="top-links-container">
+      <h2 style="color: #034a5d; margin-top: 0;">Top 10 Links Mais Acessados</h2>
+      <table class="top-links-table">
+        <thead>
+          <tr>
+            <th>Slug</th>
+            <th>Título / URL Original</th>
+            <th>Cliques</th>
+            <th>Último Acesso</th>
+          </tr>
+        </thead>
+        <tbody id="top-links-body">
+          <!-- Rows injected via JS -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    const adminToken = localStorage.getItem('adminToken');
+    if (!adminToken) {
+      location.href = '/auth/';
+    }
+
+    let clicksChart = null;
+
+    document.getElementById('refresh-btn').addEventListener('click', loadDashboard);
+    document.getElementById('range-select').addEventListener('change', loadDashboard);
+
+    async function loadDashboard() {
+      const spinner = document.getElementById('loading-spinner');
+      const content = document.getElementById('dashboard-content');
+      
+      spinner.style.display = 'block';
+      content.style.display = 'none';
+
+      const days = document.getElementById('range-select').value;
+      const toDate = new Date();
+      const fromDate = new Date();
+      fromDate.setDate(toDate.getDate() - days);
+
+      // Format YYYY-MM-DD
+      const toStr = toDate.toISOString().split('T')[0];
+      const fromStr = fromDate.toISOString().split('T')[0];
+
+      try {
+        const url = `/dash/overview?from=${fromStr}&to=${toStr}&top=10`;
+        const res = await fetch(url, {
+          headers: { 'Authorization': 'Bearer ' + adminToken }
+        });
+
+        if (res.status === 401) {
+           location.href = '/auth/';
+           return;
+        }
+
+        if (!res.ok) throw new Error('Falha ao carregar dados');
+
+        const data = await res.json();
+        renderDashboard(data);
+        
+        content.style.display = 'block';
+      } catch (err) {
+        console.error(err);
+        Swal.fire('Erro', 'Não foi possível carregar o dashboard.', 'error');
+      } finally {
+        spinner.style.display = 'none';
+      }
+    }
+
+    function renderDashboard(data) {
+      // 1. Update Stats
+      document.getElementById('stat-clicks').textContent = data.clicks_total.toLocaleString();
+      document.getElementById('stat-ips').textContent = data.unique_ips.toLocaleString();
+      document.getElementById('stat-active').textContent = data.links_active.toLocaleString();
+      document.getElementById('stat-total').textContent = data.links_total.toLocaleString();
+
+      // 2. Render Chart
+      const ctx = document.getElementById('clicksChart').getContext('2d');
+      const labels = data.series.map(p => p.bucket);
+      const values = data.series.map(p => p.clicks);
+
+      if (clicksChart) {
+        clicksChart.destroy();
+      }
+
+      clicksChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'Cliques por Dia',
+            data: values,
+            borderColor: '#42b0d5',
+            backgroundColor: 'rgba(66, 176, 213, 0.1)',
+            borderWidth: 2,
+            tension: 0.3,
+            fill: true,
+            pointRadius: 4,
+            pointHoverRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+                display: false
+            },
+            title: {
+                display: true,
+                text: 'Evolução de Cliques no Período',
+                color: '#034a5d',
+                font: { size: 16 }
+            }
+          },
+          scales: {
+            y: {
+                beginAtZero: true,
+                grid: { color: '#f0f0f0' }
+            },
+            x: {
+                grid: { display: false }
+            }
+          }
+        }
+      });
+
+      // 3. Render Top Links
+      const tbody = document.getElementById('top-links-body');
+      tbody.innerHTML = '';
+      
+      if (data.top_links.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">Nenhum dado no período.</td></tr>';
+      } else {
+        data.top_links.forEach(link => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><a href="/${link.slug}" target="_blank" style="color:#42b0d5; font-weight:bold; text-decoration:none;">${link.slug}</a></td>
+                <td>
+                    <div style="font-weight:bold;">${link.title || 'Sem título'}</div>
+                    <div style="font-size:0.8rem; color:#888; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:300px;">${link.original_url}</div>
+                </td>
+                <td style="font-weight:bold; color:#034a5d;">${link.clicks}</td>
+                <td>${link.last_click ? new Date(link.last_click).toLocaleString() : '-'}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+      }
+    }
+
+    // Initial load
+    loadDashboard();
+  </script>
+</body>
+</html>

@@ -178,3 +178,4 @@ src/static/*.png
 src/static/*.svg
 
 openapi.json
+docs/

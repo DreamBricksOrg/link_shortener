@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Logs de Acesso - Dashboard</title>
+  <link rel="stylesheet" href="/src/static/css/admin.css">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <style>
+    .filters-bar {
+      background: white;
+      padding: 1rem;
+      border-radius: 8px;
+      margin-bottom: 1.5rem;
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      align-items: center;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    
+    .filters-bar input, .filters-bar select {
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+
+    .data-table th, .data-table td {
+      padding: 12px 15px;
+      text-align: left;
+      border-bottom: 1px solid #eee;
+      font-size: 0.9rem;
+    }
+
+    .data-table th {
+      background-color: #f8f9fa;
+      color: #034a5d;
+      font-weight: 600;
+    }
+
+    .pagination {
+      display: flex;
+      justify-content: center;
+      gap: 0.5rem;
+      margin-top: 2rem;
+    }
+
+    .pagination button {
+      padding: 8px 16px;
+      border: 1px solid #42b0d5;
+      background: white;
+      color: #42b0d5;
+      cursor: pointer;
+      border-radius: 4px;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+
+    .pagination button:hover:not(:disabled) {
+      background-color: #42b0d5;
+      color: white;
+    }
+
+    .pagination button:disabled {
+      border-color: #ddd;
+      color: #999;
+      background-color: #f5f5f5;
+      cursor: not-allowed;
+    }
+    
+    .nav-bar {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 2rem;
+        background: white;
+        padding: 1rem;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    .nav-link {
+        text-decoration: none;
+        color: #666;
+        font-weight: 600;
+        padding: 0.5rem 1rem;
+        border-radius: 4px;
+    }
+    .nav-link.active { background-color: #e3f2fd; color: #0277bd; }
+    .nav-link:hover { background-color: #f5f5f5; }
+  </style>
+</head>
+<body>
+  <h1>Logs de Acesso</h1>
+
+  <div class="nav-bar">
+      <a href="/admin/dashboard" class="nav-link">Visão Geral</a>
+      <a href="/admin/dash/links" class="nav-link">Links</a>
+      <a href="/admin/dash/logs" class="nav-link active">Logs de Acesso</a>
+      <a href="/admin/" class="nav-link" style="margin-left: auto;">Voltar ao Admin</a>
+  </div>
+
+  <div class="filters-bar">
+    <input type="text" id="filter-slug" placeholder="Filtrar por slug...">
+    <select id="filter-range">
+        <option value="7">7 Dias</option>
+        <option value="30">30 Dias</option>
+        <option value="90">90 Dias</option>
+    </select>
+    <button id="btn-filter" style="background-color: #42b0d5; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">Filtrar</button>
+  </div>
+
+  <div id="loading" style="text-align: center; display: none;">Carregando...</div>
+
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Data/Hora</th>
+        <th>Slug</th>
+        <th>IP</th>
+        <th>Localização</th>
+        <th>Dispositivo</th>
+        <th>Browser/OS</th>
+        <th>Referer</th>
+      </tr>
+    </thead>
+    <tbody id="logs-body">
+      <!-- JS renders here -->
+    </tbody>
+  </table>
+
+  <div class="pagination" id="pagination"></div>
+
+  <script>
+    const adminToken = localStorage.getItem('adminToken');
+    if (!adminToken) location.href = '/auth/';
+
+    // Check URL params for slug
+    const urlParams = new URLSearchParams(window.location.search);
+    const initialSlug = urlParams.get('slug');
+    if (initialSlug) {
+        document.getElementById('filter-slug').value = initialSlug;
+    }
+
+    let currentPage = 1;
+    const pageSize = 50;
+
+    document.getElementById('btn-filter').addEventListener('click', () => {
+        currentPage = 1;
+        loadLogs();
+    });
+
+    async function loadLogs() {
+        const spinner = document.getElementById('loading');
+        const tbody = document.getElementById('logs-body');
+        const pagination = document.getElementById('pagination');
+
+        spinner.style.display = 'block';
+        tbody.innerHTML = '';
+        pagination.innerHTML = '';
+
+        const slug = document.getElementById('filter-slug').value;
+        const days = document.getElementById('filter-range').value;
+
+        const toDate = new Date();
+        const fromDate = new Date();
+        fromDate.setDate(toDate.getDate() - days);
+        const toStr = toDate.toISOString().split('T')[0];
+        const fromStr = fromDate.toISOString().split('T')[0];
+
+        let url = `/dash/access-logs?page=${currentPage}&page_size=${pageSize}&from=${fromStr}&to=${toStr}`;
+        if (slug) url += `&slug=${encodeURIComponent(slug)}`;
+
+        try {
+            const res = await fetch(url, {
+                headers: { 'Authorization': 'Bearer ' + adminToken }
+            });
+            if (res.status === 401) { location.href = '/auth/'; return; }
+
+            const data = await res.json();
+            renderTable(data.data);
+            renderPagination(data.page, data.total, data.page_size);
+
+        } catch (e) {
+            console.error(e);
+            Swal.fire('Erro', 'Falha ao carregar logs', 'error');
+        } finally {
+            spinner.style.display = 'none';
+        }
+    }
+
+    function renderTable(items) {
+        const tbody = document.getElementById('logs-body');
+        if (items.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;">Nenhum log encontrado.</td></tr>';
+            return;
+        }
+
+        items.forEach(item => {
+            const tr = document.createElement('tr');
+            const loc = [item.city, item.region, item.country].filter(Boolean).join(', ') || '-';
+            const dev = [item.device, item.is_mobile ? '(Mobile)' : ''].filter(Boolean).join(' ');
+            
+            tr.innerHTML = `
+                <td>${new Date(item.timestamp).toLocaleString()}</td>
+                <td><a href="/admin/dash/link/${item.slug}" style="color:#42b0d5;">${item.slug}</a></td>
+                <td>${item.ip || '-'}</td>
+                <td>${loc}</td>
+                <td>${dev || '-'}</td>
+                <td>${item.browser || '-'} / ${item.os || '-'}</td>
+                <td style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${item.referer || ''}">${item.referer || '-'}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    function renderPagination(page, total, size) {
+        const totalPages = Math.ceil(total / size);
+        const container = document.getElementById('pagination');
+        
+        if (totalPages <= 1) return;
+
+        const prev = document.createElement('button');
+        prev.innerText = 'Anterior';
+        prev.disabled = page === 1;
+        prev.onclick = () => { currentPage--; loadLogs(); };
+        container.appendChild(prev);
+
+        const info = document.createElement('span');
+        info.innerText = ` Pág ${page} de ${totalPages} (Total: ${total}) `;
+        info.style.alignSelf = 'center';
+        container.appendChild(info);
+
+        const next = document.createElement('button');
+        next.innerText = 'Próxima';
+        next.disabled = page === totalPages;
+        next.onclick = () => { currentPage++; loadLogs(); };
+        container.appendChild(next);
+    }
+
+    loadLogs();
+  </script>
+</body>
+</html>

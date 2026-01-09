@@ -14,6 +14,7 @@
     <button id="shortener-btn">Encurtador</button>
     <button id="reload-btn">Carregar</button>
     <button id="export-btn" hidden>Exportar CSV</button>
+    <button id="links-btn">Links</button>
   </div>
 
   <div class="filter-form" hidden>
@@ -68,6 +69,7 @@
       currentPage = 1;
       loadLinks(false);
     });
+    document.getElementById('links-btn').addEventListener('click', () => { window.location.href = "/admin/dash/links"; });
     document.getElementById('export-btn').addEventListener('click', () => exportCSV());
     document.getElementById("shortener-btn").addEventListener("click", () => { window.location.href = "/admin/form/";});
     
@@ -348,6 +350,7 @@
             ${logs.length > 50 ? '<p style="margin-top:10px; font-size:0.8rem; color:#666;">Mostrando últimos 50 registros.</p>' : ''}
             <div style="margin-top: 20px;">
               <button onclick="exportSingleLog('${slug}')" style="padding: 8px 16px;">Exportar CSV</button>
+              <button onclick="window.location.href='/admin/dash/link/${slug}'" style="padding: 8px 16px; margin-left: 10px; background-color: #007bff; color: white; border: none; border-radius: 4px;">Ver Dashboard Completo</button>
             </div>
           `;
         }
@@ -383,6 +386,8 @@
           Swal.fire('Erro', 'Não foi possível exportar os logs.', 'error');
         }
     }
+
+    loadLinks(true);
   </script>
 </body>
 </html>

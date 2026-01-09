@@ -29,6 +29,22 @@ templates = Jinja2Templates(directory="src/static/templates")
 async def index(request: Request):
     return templates.TemplateResponse("admin.html", {"request": request})
 
+@router.get("/dashboard", response_class=HTMLResponse)
+async def dashboard(request: Request):
+    return templates.TemplateResponse("dashboard.html", {"request": request})
+
+@router.get("/dash/links", response_class=HTMLResponse)
+async def dash_links_page(request: Request):
+    return templates.TemplateResponse("dashboard_links.html", {"request": request})
+
+@router.get("/dash/link/{slug}", response_class=HTMLResponse)
+async def dash_link_details_page(request: Request, slug: str):
+    return templates.TemplateResponse("dashboard_link_stats.html", {"request": request})
+
+@router.get("/dash/logs", response_class=HTMLResponse)
+async def dash_logs_page(request: Request):
+    return templates.TemplateResponse("dashboard_logs.html", {"request": request})
+
 @router.get("/form", response_class=HTMLResponse)
 async def index(request: Request):
     return templates.TemplateResponse("form.html", {"request": request})
@@ -125,7 +141,7 @@ async def list_shortlinks(
 
     results = []
     async for doc in cursor:
-        results.append({
+        item = {
             "id": str(doc["_id"]),
             "description": doc["description"],
             "slug": doc["slug"],
@@ -133,9 +149,12 @@ async def list_shortlinks(
             "callback_url": doc.get("callback_url"),
             "status": doc["status"],
             "createdAt": doc["createdAt"],
-            "qr_png": doc.get("qr_png"),
-            "qr_svg": doc.get("qr_svg"),
-        })
+        }
+        if doc.get("qr_png"):
+            item["qr_png"] = doc["qr_png"]
+        if doc.get("qr_svg"):
+            item["qr_svg"] = doc["qr_svg"]
+        results.append(item)
 
     total = await db.registrations.count_documents(filters)
 
