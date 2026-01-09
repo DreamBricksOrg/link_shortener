@@ -1,0 +1,47 @@
+/* Custom overrides for form specific needs */
+    .qrcodes {
+      display: flex;
+      gap: 20px;
+      justify-content: center;
+      margin-top: 15px;
+    }
+    .qrcodes div {
+      text-align: center;
+      background: rgba(255, 255, 255, 0.1);
+      padding: 10px;
+      border-radius: 8px;
+    }
+    .qrcodes img {
+      background: white;
+      padding: 5px;
+      border-radius: 5px;
+      width: 100px;
+      height: 100px;
+      margin-top: 5px;
+    }
+    .qrcodes p {
+      margin-bottom: 5px;
+      font-size: 0.9rem;
+      font-weight: bold;
+    }
+    .result-box {
+      background-color: rgba(0, 0, 0, 0.1);
+      padding: 15px;
+      border-radius: 8px;
+      margin-top: 20px;
+      text-align: center;
+    }
+    .result-box a {
+      color: #fff;
+      font-weight: bold;
+      word-break: break-all;
+    }
+    .btn-secondary {
+      background-color: transparent;
+      border: 2px solid white;
+      color: white;
+    }
+    .btn-secondary:hover {
+      background-color: rgba(255, 255, 255, 0.1);
+      color: white;
+    }
