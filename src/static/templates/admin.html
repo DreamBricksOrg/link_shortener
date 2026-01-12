@@ -33,6 +33,8 @@
     <button id="apply-filters-btn">Aplicar Filtros</button>
   </div>
 
+  <div id="links-meta" style="margin: 0.5rem 0 1rem; color: #444;"></div>
+
   <div id="links-container"></div>
 
   <script>
@@ -51,7 +53,10 @@
       'filter-date-to': 'date_to'
     };
 
-    document.getElementById('reload-btn').addEventListener('click', () => loadLinks(true));
+    document.getElementById('reload-btn').addEventListener('click', () => {
+      clearFilters();
+      loadLinks(true);
+    });
     document.getElementById('apply-filters-btn').addEventListener('click', () => loadLinks(false));
     document.getElementById('export-btn').addEventListener('click', () => exportCSV());
     document.getElementById("shortener-btn").addEventListener("click", () => { window.location.href = "/admin/form/";});
@@ -73,6 +78,9 @@
       }
 
       const json = await res.json();
+      const total = json.total ?? (json.data ? json.data.length : 0);
+      const shown = (json.data || []).length;
+      renderMeta(total, shown);
       renderLinks(json.data || []);
 
       if (showControls) {
@@ -80,6 +88,18 @@
         document.getElementById('export-btn').hidden = false;
         document.getElementById('reload-btn').textContent = "Recarregar";
       }
+    }
+
+    function clearFilters() {
+      for (const id of Object.keys(filters)) {
+        const el = document.getElementById(id);
+        if (el) el.value = "";
+      }
+    }
+
+    function renderMeta(total, shown) {
+      const el = document.getElementById("links-meta");
+      el.textContent = `Links: ${total} (mostrando ${shown})`;
     }
 
     function renderLinks(list) {
@@ -90,26 +110,34 @@
         div.className = 'entry';
         div.id = `link-${link.id}`;
         div.innerHTML = `
-          <div><strong>${link.slug}</strong> – ${link.description}</div>
+          <div><strong>${link.slug}</strong> – ${link.description || ''}</div>
           <div>Original: <a href="${link.original_url}" target="_blank">${link.original_url}</a></div>
-          <div>Status: ${link.status}</div>
-          <div>Criado em: ${link.created_at}</div>
-          <div>
+          <div>Status: ${link.status || ''}</div>
+          <div>Criado em: ${link.created_at || ''}</div>
+
+          <div id="qrbox-${link.id}">
             ${link.qr_png ? `<a href="${link.qr_png}" download target="_blank">
-              <img src="${link.qr_png}" alt="QR code" style="height: 120px">
+              <img src="${link.qr_png}" alt="QR code PNG" style="height: 120px">
             </a>` : ''}
             ${link.qr_svg ? `<a href="${link.qr_svg}" download target="_blank">
-              <img src="${link.qr_svg}" alt="QR code" style="height: 120px">
+              <img src="${link.qr_svg}" alt="QR code SVG" style="height: 120px">
             </a>` : ''}
           </div>
+
+          <div style="margin-top: 0.75rem;">
+            <button onclick="regenerateQr('${link.slug}', '${link.id}')">Regenerar QR</button>
+            <span class="status" id="qrstatus-${link.id}" style="margin-left: 0.5rem;"></span>
+          </div>
+
           <div>
             <a href="javascript:void(0)" onclick="showAccessLog('${link.slug}')" id="toggle-${link.slug}">access_log</a>
             <pre id="log-${link.slug}" style="display:none; background:#eee; padding:1rem; overflow-x:auto;"></pre>
           </div>
-          <div id="log-${link.slug}" style="display: none; white-space: pre-wrap; background: #f4f4f4; border: 1px solid #ccc; padding: 10px; margin-top: 0.5rem;"></div>
+
           <label>Descrição: <input type="text" id="desc-${link.id}" value="${link.description || ''}"></label>
           <label>URL Original: <input type="text" id="orig-${link.id}" value="${link.original_url || ''}"></label>
           <label>Callback: <input type="text" id="cb-${link.id}" value="${link.callback_url || ''}"></label>
+
           <div class="status" id="status-${link.id}"></div>
           <button onclick="updateLink('${link.id}')">Salvar</button>
           <button onclick="deleteLink('${link.id}')">Excluir</button>
@@ -242,6 +270,70 @@
           URL.revokeObjectURL(url);
         };
         pre.parentNode.insertBefore(btn, pre.nextSibling);
+      }
+    }
+
+    async function regenerateQr(slug, id) {
+      const statusEl = document.getElementById(`qrstatus-${id}`);
+      statusEl.style.color = "green";
+      statusEl.textContent = "Regenerando...";
+
+      try {
+        const res = await fetch(`/admin/qr/regenerate`, {
+          method: "POST",
+          headers: {
+            "Authorization": "Bearer " + adminToken,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ slug, force: true })
+        });
+
+        if (res.status === 401) {
+          alert("Sessão expirada.");
+          return location.href = "/auth/";
+        }
+
+        const json = await res.json();
+        const result = (json.results || []).find(r => r.slug === slug);
+
+        if (!res.ok || !result || !result.ok) {
+          statusEl.style.color = "red";
+          statusEl.textContent = "❌ Erro ao regenerar.";
+          console.error("regenerate error:", json);
+          return;
+        }
+
+        statusEl.style.color = "green";
+        statusEl.textContent = "✔️ QR regenerado!";
+
+        // Atualiza preview se veio URL
+        const qrBox = document.getElementById(`qrbox-${id}`);
+        const qrPng = result.qr_png;
+        const qrSvg = result.qr_svg;
+
+        // cache-bust simples pra forçar refresh no browser
+        const bust = `t=${Date.now()}`;
+
+        let html = "";
+        if (qrPng) {
+          const u = qrPng.includes("?") ? `${qrPng}&${bust}` : `${qrPng}?${bust}`;
+          html += `<a href="${qrPng}" download target="_blank">
+            <img src="${u}" alt="QR code PNG" style="height: 120px">
+          </a>`;
+        }
+        if (qrSvg) {
+          const u = qrSvg.includes("?") ? `${qrSvg}&${bust}` : `${qrSvg}?${bust}`;
+          html += ` <a href="${qrSvg}" download target="_blank">
+            <img src="${u}" alt="QR code SVG" style="height: 120px">
+          </a>`;
+        }
+
+        qrBox.innerHTML = html;
+
+      } catch (e) {
+        statusEl.style.color = "red";
+        statusEl.textContent = "❌ Erro (network).";
+        console.error(e);
       }
     }
 
