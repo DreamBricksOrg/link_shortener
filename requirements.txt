@@ -14,3 +14,4 @@ python-multipart
 Pillow
 PyJWT 
 bcrypt
+python-dateutil
