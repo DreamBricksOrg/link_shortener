@@ -440,7 +440,7 @@ async def get_link_access_logs(slug: str, limit: int = 50):
         logs_out.append(doc)
 
     if not logs_out:
-        raise HTTPException(status_code=404, detail="Nenhum log encontrado para este link")
+        raise HTTPException(status_code=204, detail="Nenhum log encontrado para este link")
 
     return logs_out
 
