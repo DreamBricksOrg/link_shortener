@@ -129,14 +129,14 @@ async def list_shortlinks(
         if date_to:
             end = datetime.combine(date_to, time.max).replace(tzinfo=timezone.utc)
             dt_filter["$lte"] = end
-        filters["createdAt"] = dt_filter
+        filters["created_at"] = dt_filter
 
     skip = (page - 1) * page_size
 
     cursor = (
         db.links
         .find(filters)
-        .sort("createdAt", -1)
+        .sort("created_at", -1)
         .skip(skip)
         .limit(page_size)
     )
@@ -150,7 +150,7 @@ async def list_shortlinks(
             "original_url": doc["original_url"],
             "callback_url": doc.get("callback_url"),
             "status": doc["status"],
-            "createdAt": doc["createdAt"],
+            "created_at": doc["created_at"],
             "qr_png": doc.get("qr_png"),
             "qr_svg": doc.get("qr_svg"),
         })
@@ -190,9 +190,9 @@ async def export_shortlinks(
             dtf["$gte"] = datetime.combine(date_from, time.min).replace(tzinfo=timezone.utc)
         if date_to:
             dtf["$lte"] = datetime.combine(date_to, time.max).replace(tzinfo=timezone.utc)
-        filters["createdAt"] = dtf
+        filters["created_at"] = dtf
 
-    cursor = db.links.find(filters).sort("createdAt", -1)
+    cursor = db.links.find(filters).sort("created_at", -1)
 
     async def csv_generator():
         buf = io.StringIO()
@@ -200,7 +200,7 @@ async def export_shortlinks(
         # cabeçalho
         writer.writerow([
             "id", "description", "slug", "original_url", "callback_url",
-            "status", "createdAt", "qr_png", "qr_svg"
+            "status", "created_at", "qr_png", "qr_svg"
         ])
         yield buf.getvalue()
         buf.seek(0); buf.truncate(0)
@@ -213,7 +213,7 @@ async def export_shortlinks(
                 doc.get("original_url", ""),
                 doc.get("callback_url", ""),
                 doc.get("status", ""),
-                doc.get("createdAt"),
+                doc.get("created_at"),
                 doc.get("qr_png", ""),
                 doc.get("qr_svg", "")
             ])
@@ -292,7 +292,7 @@ async def update_shortlink(
         "original_url": doc["original_url"],
         "callback_url": doc.get("callback_url"),
         "status": doc["status"],
-        "createdAt": doc["createdAt"],
+        "created_at": doc["created_at"],
         "reviewedAt": doc["reviewedAt"],
         "qr_png": doc.get("qr_png"),
         "qr_svg": doc.get("qr_svg"),
