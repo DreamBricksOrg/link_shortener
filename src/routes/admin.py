@@ -5,11 +5,11 @@ import csv
 import io
 import os
 
-from typing import Optional, Any
+from typing import List, Optional, Any
 from bson import ObjectId
 from datetime import datetime, timezone, date, time
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Path, status, Security, Request, Form
+from fastapi import APIRouter, Depends, HTTPException, Query, Path, status, Security, Request, Form, Body
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.responses import StreamingResponse, HTMLResponse
 from fastapi.templating import Jinja2Templates
@@ -18,8 +18,11 @@ from core.config import settings
 from core.db import db
 from schemas.shortlink import ShortenResponse
 from utils.qr import generate_qr
+from schemas.admin import RegenerateQrRequest, RegenerateQrResponse, RegenerateQrResult
+from schemas.shortlink import ShortenResponse
 
-router = APIRouter(prefix="/admin")
+
+router = APIRouter(prefix="/admin", tags=["admin"])
 log = structlog.get_logger()
 bearer = HTTPBearer(auto_error=False)
 templates = Jinja2Templates(directory="src/static/templates")
@@ -49,37 +52,52 @@ async def admin_required(
         raise HTTPException(401, "Token inválido")
     return payload
 
-@router.post("/shorten", dependencies=[Depends(admin_required)], response_model=ShortenResponse)
+@router.post("/shorten",dependencies=[Depends(admin_required)],response_model=ShortenResponse)
 async def shorten_link(
     name: str = Form(...),
     url: str = Form(...),
-    callback_url: str = Form(None),
-    slug: str = Form(None),
+    callback_url: Optional[str] = Form(None),
+    slug: Optional[str] = Form(None),
+    notes: Optional[str] = Form(None),
+    expires_at: Optional[datetime] = Form(None),
 ):
+    """
+    Endpoint de form do admin: cria um link,
+    e gera QR (mantendo o retorno ShortenResponse).
+    """
     slug = slug or shortuuid.uuid()[:6]
     if await db.links.find_one({"slug": slug}):
         raise HTTPException(status_code=409, detail="Slug já está em uso.")
+
     qr_png_path, qr_svg_path = generate_qr(slug)
-    base_url = settings.BASE_URL
-    qr_png =f"{base_url}/{qr_png_path}"
-    qr_svg =f"{base_url}/{qr_svg_path}"
-    await db.links.insert_one({
+    base_url = settings.BASE_URL.rstrip("/")
+    qr_png = f"{base_url}/{qr_png_path}"
+    qr_svg = f"{base_url}/{qr_svg_path}"
+
+    now = datetime.now(timezone.utc)
+
+    doc = {
         "slug": slug,
         "original_url": url,
-        "description": name,
+        "title": name,
+        "notes": notes,
+        "tags": [],
+        "is_active": True,
+        "created_at": now,
+        "updated_at": None,
+        "expires_at": expires_at,
+        "max_clicks": None,
+        "click_count": 0,
         "callback_url": callback_url,
-        "createdAt": datetime.now().isoformat(),
         "qr_png": qr_png,
         "qr_svg": qr_svg,
-        "status": "valid"
-    })
+        "status": "valid",
+    }
 
-    log.info("Link created", slug=slug, url=url)
-    return ShortenResponse(
-        slug=slug,
-        qr_png=qr_png,
-        qr_svg=qr_svg
-    )
+    await db.links.insert_one(doc)
+
+    log.info("admin-link-created", slug=slug, original_url=url)
+    return ShortenResponse(slug=slug, qr_png=qr_png, qr_svg=qr_svg)
 
 @router.get("/links", dependencies=[Depends(admin_required)], response_model=Any)
 async def list_shortlinks(
@@ -357,3 +375,91 @@ async def export_access_logs(slug: str):
         media_type="text/csv",
         headers={"Content-Disposition": f"attachment; filename={filename}"}
     )
+
+@router.post("/qr/regenerate", dependencies=[Depends(admin_required)], response_model=RegenerateQrResponse)
+async def regenerate_qr_codes(payload: RegenerateQrRequest = Body(...)):
+    """
+    Regenera QR codes para um ou vários slugs.
+    - Cria/overwrite /app/src/static/{slug}.png e .svg
+    - Atualiza o link: is_active=true, status=valid, qr_png/qr_svg, updated_at
+    """
+    if not payload.slug and not payload.slugs:
+        raise HTTPException(status_code=400, detail="Provide either 'slug' or 'slugs'.")
+
+    slugs: List[str] = []
+    if payload.slug:
+        slugs.append(payload.slug)
+    if payload.slugs:
+        slugs.extend(payload.slugs)
+
+    seen = set()
+    slugs = [s for s in slugs if s and not (s in seen or seen.add(s))]
+
+    base_url = settings.BASE_URL.rstrip("/")
+    now = datetime.now(timezone.utc)
+
+    updated = 0
+    results: List[RegenerateQrResult] = []
+
+    for slug in slugs:
+        doc = await db.links.find_one({"slug": slug})
+        if not doc:
+            results.append(RegenerateQrResult(slug=slug, ok=False, reason="link_not_found"))
+            continue
+
+        try:
+            png_path = f"/app/src/static/{slug}.png"
+            svg_path = f"/app/src/static/{slug}.svg"
+
+            if not payload.force and os.path.exists(png_path) and os.path.exists(svg_path):
+                qr_png = f"{base_url}/src/static/{slug}.png"
+                qr_svg = f"{base_url}/src/static/{slug}.svg"
+
+                res = await db.links.update_one(
+                    {"_id": doc["_id"]},
+                    {"$set": {
+                        "qr_png": qr_png,
+                        "qr_svg": qr_svg,
+                        "is_active": True,
+                        "status": "valid",
+                        "updated_at": now,
+                    }},
+                )
+                if res.modified_count:
+                    updated += 1
+
+                results.append(RegenerateQrResult(slug=slug, ok=True, reason="skipped_files_exist", qr_png=qr_png, qr_svg=qr_svg))
+                continue
+
+            qr_png_rel, qr_svg_rel = generate_qr(slug)
+            if "/" in qr_png_rel:
+                qr_png_url = f"{base_url}/{qr_png_rel.lstrip('/')}"
+            else:
+                qr_png_url = f"{base_url}/src/static/{qr_png_rel}"
+
+            if "/" in qr_svg_rel:
+                qr_svg_url = f"{base_url}/{qr_svg_rel.lstrip('/')}"
+            else:
+                qr_svg_url = f"{base_url}/src/static/{qr_svg_rel}"
+
+            res = await db.links.update_one(
+                {"_id": doc["_id"]},
+                {"$set": {
+                    "qr_png": qr_png_url,
+                    "qr_svg": qr_svg_url,
+                    "is_active": True,
+                    "status": "valid",
+                    "updated_at": now,
+                }},
+            )
+
+            if res.modified_count:
+                updated += 1
+
+            results.append(RegenerateQrResult(slug=slug, ok=True, qr_png=qr_png_url, qr_svg=qr_svg_url))
+
+        except Exception as e:
+            results.append(RegenerateQrResult(slug=slug, ok=False, reason=str(e)))
+
+    log.info("admin-qr-regenerate", updated=updated, requested=len(slugs))
+    return RegenerateQrResponse(updated=updated, results=results)
