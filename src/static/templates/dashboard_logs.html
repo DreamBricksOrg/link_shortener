@@ -79,6 +79,7 @@
     
     .nav-bar {
         display: flex;
+        flex-wrap: wrap;
         gap: 1rem;
         margin-bottom: 2rem;
         background: white;
@@ -95,6 +96,75 @@
     }
     .nav-link.active { background-color: #e3f2fd; color: #0277bd; }
     .nav-link:hover { background-color: #f5f5f5; }
+
+    .referer-ellipsis {
+      max-width: 200px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      display: inline-block;
+      vertical-align: bottom;
+    }
+
+    @media (max-width: 1420px) {
+      .nav-bar { gap: 0.5rem; }
+      .nav-link { padding: 0.5rem 0.75rem; flex: 1 1 auto; text-align: center; }
+      .nav-link-admin { width: 100%; margin-left: 0 !important; }
+
+      .filters-bar { flex-direction: column; align-items: stretch; gap: 0.75rem; }
+      .filters-bar input, .filters-bar select { width: 100%; }
+      #btn-filter { width: 100%; }
+
+      .data-table { box-shadow: none; background: transparent; }
+      .data-table thead { display: none; }
+      .data-table, .data-table tbody, .data-table tr, .data-table td { display: block; width: 100%; }
+      .data-table tr {
+        background: white;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        margin-bottom: 12px;
+      }
+      .data-table td {
+        border-bottom: 1px solid #eee;
+        padding: 10px 12px;
+        display: flex;
+        gap: 12px;
+        align-items: flex-start;
+      }
+      .data-table td:last-child { border-bottom: none; }
+      .data-table td::before {
+        content: attr(data-label);
+        flex: 0 0 34%;
+        font-weight: 600;
+        color: #034a5d;
+      }
+      .data-table td .cell-value {
+        flex: 1;
+        min-width: 0;
+        text-align: left;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+      }
+      .referer-ellipsis {
+        max-width: none;
+        white-space: normal;
+        overflow: visible;
+        text-overflow: clip;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+      }
+
+      .pagination { flex-direction: column; gap: 0.75rem; }
+      .pagination button { width: 100%; }
+      .pagination span { text-align: center; }
+    }
+
+    @media (max-width: 420px) {
+      .data-table td { flex-direction: column; gap: 6px; }
+      .data-table td::before { flex: none; }
+      .data-table td .cell-value { text-align: left; }
+    }
   </style>
 </head>
 <body>
@@ -104,7 +174,7 @@
       <a href="/admin/dashboard" class="nav-link">Visão Geral</a>
       <a href="/admin/dash/links" class="nav-link">Links</a>
       <a href="/admin/dash/logs" class="nav-link active">Logs de Acesso</a>
-      <a href="/admin/" class="nav-link" style="margin-left: auto;">Voltar ao Admin</a>
+      <a href="/admin/" class="nav-link nav-link-admin" style="margin-left: auto;">Voltar ao Admin</a>
   </div>
 
   <div class="filters-bar">
@@ -209,13 +279,21 @@
             const dev = [item.device, item.is_mobile ? '(Mobile)' : ''].filter(Boolean).join(' ');
             
             tr.innerHTML = `
-                <td>${new Date(item.timestamp).toLocaleString()}</td>
-                <td><a href="/admin/dash/link/${item.slug}" style="color:#42b0d5;">${item.slug}</a></td>
-                <td>${item.ip || '-'}</td>
-                <td>${loc}</td>
-                <td>${dev || '-'}</td>
-                <td>${item.browser || '-'} / ${item.os || '-'}</td>
-                <td style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${item.referer || ''}">${item.referer || '-'}</td>
+                <td data-label="Data/Hora"><div class="cell-value">${new Date(item.timestamp).toLocaleString()}</div></td>
+                <td data-label="Slug">
+                    <div class="cell-value">
+                        <a href="/admin/dash/link/${item.slug}" style="color:#42b0d5;">${item.slug}</a>
+                    </div>
+                </td>
+                <td data-label="IP"><div class="cell-value">${item.ip || '-'}</div></td>
+                <td data-label="Localização"><div class="cell-value">${loc}</div></td>
+                <td data-label="Dispositivo"><div class="cell-value">${dev || '-'}</div></td>
+                <td data-label="Browser/OS"><div class="cell-value">${item.browser || '-'} / ${item.os || '-'}</div></td>
+                <td data-label="Referer">
+                    <div class="cell-value">
+                        <span class="referer-ellipsis" title="${item.referer || ''}">${item.referer || '-'}</span>
+                    </div>
+                </td>
             `;
             tbody.appendChild(tr);
         });

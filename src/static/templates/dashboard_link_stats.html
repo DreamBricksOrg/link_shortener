@@ -14,6 +14,16 @@
         border-radius: 8px;
         margin-bottom: 2rem;
         box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        overflow: hidden;
+    }
+    .header-info h2,
+    .header-info p,
+    .header-info a {
+        overflow-wrap: anywhere;
+        word-break: break-word;
+    }
+    .header-info a {
+        display: inline;
     }
     .grid-charts {
         display: grid;
@@ -27,6 +37,18 @@
         border-radius: 8px;
         box-shadow: 0 2px 4px rgba(0,0,0,0.05);
         min-height: 300px;
+    }
+    .chart-canvas-wrap {
+        position: relative;
+        height: 320px;
+    }
+    .chart-canvas-wrap.is-line {
+        height: 400px;
+    }
+    .chart-box canvas {
+        width: 100% !important;
+        height: 100% !important;
+        display: block;
     }
     .full-width {
         grid-column: span 2;
@@ -106,6 +128,15 @@
     @media(max-width: 768px) {
         .grid-charts { grid-template-columns: 1fr; }
         .full-width { grid-column: span 1; }
+        .chart-box { min-height: 240px; }
+        .chart-canvas-wrap { height: 260px; }
+        .chart-canvas-wrap.is-line { height: 320px; }
+        .top-controls { flex-direction: column; align-items: stretch; gap: 12px; }
+        .top-controls .tabs { width: 100%; justify-content: flex-start; flex-wrap: wrap; }
+        #range-select { width: 100%; }
+        .header-info { padding: 1rem; margin-bottom: 1.25rem; }
+        .header-info h2 { font-size: 1.25rem; }
+        .header-info p { margin: 0.5rem 0; }
     }
   </style>
 </head>
@@ -123,7 +154,7 @@
       Loading info...
   </div>
 
-  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+  <div class="top-controls" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
       <div class="tabs" style="margin-bottom: 0; border-bottom: none;">
           <button class="tab-btn active" onclick="switchTab('overview')">Visão Geral</button>
           <button class="tab-btn" onclick="switchTab('logs')">Logs de Acesso</button>
@@ -143,21 +174,27 @@
       <div class="grid-charts">
           <div class="chart-box full-width">
               <h3>Evolução de Cliques</h3>
-              <div style="height: 400px; position: relative;">
+              <div class="chart-canvas-wrap is-line">
                   <canvas id="lineChart"></canvas>
               </div>
           </div>
           <div class="chart-box">
               <h3>Navegadores</h3>
-              <canvas id="browserChart"></canvas>
+              <div class="chart-canvas-wrap">
+                  <canvas id="browserChart"></canvas>
+              </div>
           </div>
           <div class="chart-box">
               <h3>Sistemas Operacionais</h3>
-              <canvas id="osChart"></canvas>
+              <div class="chart-canvas-wrap">
+                  <canvas id="osChart"></canvas>
+              </div>
           </div>
           <div class="chart-box">
               <h3>Dispositivos</h3>
-              <canvas id="deviceChart"></canvas>
+              <div class="chart-canvas-wrap">
+                  <canvas id="deviceChart"></canvas>
+              </div>
           </div>
           <div class="chart-box">
               <h3>Geolocalização (Top 5)</h3>
@@ -387,6 +424,11 @@
                     data: data.browsers.map(b => b.count),
                     backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF']
                 }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: 'bottom' } }
             }
         });
 
@@ -401,6 +443,11 @@
                     data: data.os.map(o => o.count),
                     backgroundColor: ['#FF9F40', '#FFCD56', '#4BC0C0', '#36A2EB', '#9966FF']
                 }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: 'bottom' } }
             }
         });
 
@@ -417,6 +464,11 @@
                     data: data.device_type.map(d => d.count),
                     backgroundColor: ['#36A2EB', '#FF6384', '#FFCE56']
                 }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: 'bottom' } }
             }
         });
 
