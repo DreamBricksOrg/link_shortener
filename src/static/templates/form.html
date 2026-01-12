@@ -4,39 +4,36 @@
   <title>Link Shortener</title>
   <meta charset="UTF-8" />
   <style>
-    body {
-      font-family: sans-serif;
-      max-width: 600px;
-      margin: 40px auto;
-    }
-    input, button {
+    body { font-family: sans-serif; max-width: 600px; margin: 40px auto; }
+    input, textarea, button {
       display: block;
       margin-bottom: 10px;
       width: 100%;
       padding: 8px;
       font-size: 1rem;
+      box-sizing: border-box;
     }
-    #result {
-      margin-top: 20px;
-    }
-    img {
-      max-width: 200px;
-      margin-right: 10px;
-    }
-    .qrcodes {
-      display: flex;
-      gap: 10px;
-      margin-top: 10px;
-    }
+    textarea { min-height: 90px; resize: vertical; }
+    #result { margin-top: 20px; }
+    img { max-width: 200px; margin-right: 10px; }
+    .qrcodes { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
+    .hint { font-size: 0.9rem; color: #666; margin-top: -6px; margin-bottom: 10px; }
   </style>
 </head>
 <body>
   <h1>🔗 Encurtador de Links</h1>
+
   <form id="shorten-form">
-    <input type="text" name="name" placeholder="Descrição" required />
+    <input type="text" name="name" placeholder="Título (ex: LEGO campanha X)" required />
     <input type="url" name="url" placeholder="URL original" required />
     <input type="url" name="callback_url" placeholder="Callback URL (opcional)" />
     <input type="text" name="slug" placeholder="Slug personalizado (opcional)" />
+
+    <textarea name="notes" placeholder="Notas (opcional)"></textarea>
+
+    <input type="datetime-local" id="expires_at" placeholder="Expira em (opcional)" />
+    <div class="hint">Expira em: opcional. Se preencher, o backend salva como datetime.</div>
+
     <button type="submit">Gerar Link</button>
     <button type="button" id="admin-back">Voltar</button>
   </form>
@@ -49,51 +46,77 @@
       alert('Faça login como admin primeiro.');
       location.href = '/auth/';
     }
-    
-    document.getElementById("admin-back").addEventListener("click", () => { window.location.href = "/admin/";});
-    document.getElementById("shorten-form").addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const form = e.target;
-      const data = new FormData(form);
 
-      const response = await fetch("/admin/shorten", {
-        method: "POST",
-        headers: { 'Authorization': 'Bearer ' + adminToken },
-        body: data
+    document.getElementById("admin-back")
+      .addEventListener("click", () => { window.location.href = "/admin/"; });
+
+    document.getElementById("shorten-form")
+      .addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const form = e.target;
+
+        const data = new FormData(form);
+
+        const expiresInput = document.getElementById("expires_at").value;
+        if (expiresInput) {
+          const dt = new Date(expiresInput);
+          if (!isNaN(dt.getTime())) {
+            data.append("expires_at", dt.toISOString());
+          }
+        }
+
+        const response = await fetch("/admin/shorten", {
+          method: "POST",
+          headers: { 'Authorization': 'Bearer ' + adminToken },
+          body: data
+        });
+
+        if (response.status === 401) {
+          alert("Sessão expirada.");
+          return location.href = "/auth/";
+        }
+
+        const resultEl = document.getElementById("result");
+
+        if (!response.ok) {
+          let errText = "Erro ao criar link.";
+          try {
+            const err = await response.json();
+            errText = err.detail || JSON.stringify(err);
+          } catch (_) {}
+          resultEl.innerHTML = `<p style="color:red">Erro: ${errText}</p>`;
+          return;
+        }
+
+        const result = await response.json();
+        const link = `${window.location.origin}/${result.slug}`;
+
+        const bust = `t=${Date.now()}`;
+        const pngPreview = result.qr_png ? (result.qr_png.includes("?") ? `${result.qr_png}&${bust}` : `${result.qr_png}?${bust}`) : null;
+        const svgPreview = result.qr_svg ? (result.qr_svg.includes("?") ? `${result.qr_svg}&${bust}` : `${result.qr_svg}?${bust}`) : null;
+
+        resultEl.innerHTML = `
+          <p><strong>✅ Link criado:</strong> <a href="${link}" target="_blank">${link}</a></p>
+          <div class="qrcodes">
+            <div>
+              <p>QR PNG:</p>
+              ${result.qr_png ? `
+                <a href="${result.qr_png}" download target="_blank">
+                  <img src="${pngPreview}" alt="QR PNG">
+                </a>
+              ` : `<p style="color:#666">—</p>`}
+            </div>
+            <div>
+              <p>QR SVG:</p>
+              ${result.qr_svg ? `
+                <a href="${result.qr_svg}" download target="_blank">
+                  <img src="${svgPreview}" alt="QR SVG">
+                </a>
+              ` : `<p style="color:#666">—</p>`}
+            </div>
+          </div>
+        `;
       });
-
-      if (response.status === 401) {
-        alert("Sessão expirada.");
-        return location.href = "/auth/";
-      }
-
-      const resultEl = document.getElementById("result");
-      if (!response.ok) {
-        const err = await response.json();
-        resultEl.innerHTML = `<p style="color:red">Erro: ${err.detail}</p>`;
-        return;
-      }
-
-      const result = await response.json();
-      const link = `${window.location.origin}/${result.slug}`;
-      resultEl.innerHTML = `
-        <p><strong>✅ Link criado:</strong> <a href="${link}" target="_blank">${link}</a></p>
-        <div class="qrcodes">
-          <div>
-            <p>QR PNG:</p>
-            <a href="${result.qr_png}" download>
-              <img src="${result.qr_png}" alt="QR PNG">
-            </a>
-          </div>
-          <div>
-            <p>QR SVG:</p>
-            <a href="${result.qr_svg}" download>
-              <img src="${result.qr_svg}" alt="QR SVG">
-            </a>
-          </div>
-        </div>
-      `;
-    });
   </script>
 </body>
 </html>
