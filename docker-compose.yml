@@ -1,11 +1,12 @@
 version: "3.9"
 
-name: link_shortener
+name: shortener-api
 
 services:
   api:
     build: .
-    container_name: link_shortener_api
+    image: link_shortener-api
+    container_name: shortener-api
     restart: unless-stopped
     env_file: .env
     environment:
@@ -13,6 +14,8 @@ services:
       APP_ENV: ${APP_ENV}
     ports:
       - "5000:5000"
+    volumes:
+      - qr_static:/app/src/static
 
 volumes:
   qr_static:
