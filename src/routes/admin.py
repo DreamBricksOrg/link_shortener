@@ -328,13 +328,10 @@ async def get_link_access_logs(slug: str, limit: int = 3):
             log_doc["_id"] = str(log_doc["_id"])
             logs.append(log_doc)
 
-        if not logs:
-            raise HTTPException(status_code=404, detail="Nenhum log de acesso encontrado para este link.")
-
         return logs
 
     except Exception as e:
-        log.error("Erro ao buscar logs", error=str(e))
+        log.error("Erro ao buscar logs", slug=slug, error=str(e))
         raise HTTPException(status_code=500, detail="Erro interno ao buscar logs.")
 
 @router.get("/links/{slug}/logs/export", dependencies=[Depends(admin_required)])
