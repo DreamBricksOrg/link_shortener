@@ -1,12 +1,19 @@
 version: "3.9"
+
+name: link_shortener
+
 services:
   api:
     build: .
-    container_name: shortener-api
+    container_name: link_shortener_api
     restart: unless-stopped
     env_file: .env
     environment:
-      - PYTHONPATH=/app/src
-      - APP_ENV="dev"
+      PYTHONPATH: /app/src
+      APP_ENV: ${APP_ENV}
     ports:
       - "5000:5000"
+
+volumes:
+  qr_static:
+    name: link_shortener_qr_static
