@@ -20,12 +20,16 @@
 
       <form id="shorten-form">
         <label>
-          Descrição
+          Titulo
           <input type="text" name="name" placeholder="Ex: Campanha Instagram" required />
         </label>
         <label>
           URL Original
           <input type="url" name="url" placeholder="https://..." required />
+        </label>
+        <label>
+          Notas (opcional)
+          <input type="text" name="notes" placeholder="Ex: UTM, canal, observações..." />
         </label>
         <label>
           Callback URL (opcional)
@@ -34,6 +38,10 @@
         <label>
           Slug Personalizado (opcional)
           <input type="text" name="slug" />
+        </label>
+        <label>
+          Expira em (opcional)
+          <input type="datetime-local" name="expires_at" />
         </label>
         
         <button type="submit">Gerar Link</button>

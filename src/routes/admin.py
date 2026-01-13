@@ -126,6 +126,7 @@ async def list_links(
     title: Optional[str] = Query(None),
     original_url: Optional[str] = Query(None),
     callback_url: Optional[str] = Query(None),
+    notes: Optional[str] = Query(None),
     tag: Optional[str] = Query(None),
     is_active: Optional[bool] = Query(None),
     date_from: Optional[date] = Query(None),
@@ -143,6 +144,8 @@ async def list_links(
         filters["original_url"] = {"$regex": original_url, "$options": "i"}
     if callback_url:
         filters["callback_url"] = {"$regex": callback_url, "$options": "i"}
+    if notes:
+        filters["notes"] = {"$regex": notes, "$options": "i"}
     if tag:
         filters["tags"] = tag
     if is_active is not None:
@@ -210,6 +213,7 @@ async def export_links(
     slug: Optional[str] = Query(None),
     title: Optional[str] = Query(None),
     original_url: Optional[str] = Query(None),
+    notes: Optional[str] = Query(None),
     tag: Optional[str] = Query(None),
     is_active: Optional[bool] = Query(None),
     date_from: Optional[date] = Query(None),
@@ -223,6 +227,8 @@ async def export_links(
         filters["title"] = {"$regex": title, "$options": "i"}
     if original_url:
         filters["original_url"] = {"$regex": original_url, "$options": "i"}
+    if notes:
+        filters["notes"] = {"$regex": notes, "$options": "i"}
     if tag:
         filters["tags"] = tag
     if is_active is not None:

@@ -19,7 +19,8 @@
 
   <div class="filter-form" hidden>
     <label>Slug: <input type="text" id="filter-slug"></label>
-    <label>Descrição: <input type="text" id="filter-description"></label>
+    <label>Título: <input type="text" id="filter-tittle"></label>
+    <label>Notas: <input type="text" id="filter-notes"></label>
     <label>URL Original: <input type="text" id="filter-original"></label>
     <label>Callback URL: <input type="text" id="filter-callback"></label>
     <label>De: <input type="date" id="filter-date-from"></label>
@@ -51,7 +52,8 @@
 
     const filters = {
       'filter-slug': 'slug',
-      'filter-description': 'description',
+      'filter-tittle': 'title',
+      'filter-notes': 'notes',
       'filter-original': 'original_url',
       'filter-callback': 'callback_url',
       'filter-date-from': 'date_from',
@@ -167,12 +169,16 @@
           
           <div class="card-body">
             <label>
-              Descrição
-              <input type="text" id="desc-${link.id}" value="${link.description || ''}">
+              Título
+              <input type="text" id="title-${link.id}" value="${link.title || ''}">
             </label>
             <label>
               URL Original
               <input type="text" id="orig-${link.id}" value="${link.original_url || ''}">
+            </label>
+            <label>
+              Notas
+              <input type="text" id="notes-${link.id}" value="${link.notes || ''}">
             </label>
             <label>
               Callback URL
@@ -209,8 +215,9 @@
       btn.disabled = true;
 
       const params = new URLSearchParams({
-        description: document.getElementById(`desc-${id}`).value,
+        title: document.getElementById(`title-${id}`).value,
         original_url: document.getElementById(`orig-${id}`).value,
+        notes: document.getElementById(`notes-${id}`).value,
         callback_url: document.getElementById(`cb-${id}`).value,
       });
 
@@ -313,6 +320,29 @@
         const res = await fetch(`/admin/links/${slug}/logs`, {
           headers: { 'Authorization': 'Bearer ' + adminToken }
         });
+
+        if (res.status === 401) {
+          Swal.fire({
+            icon: 'error',
+            title: 'Sessão Expirada',
+            text: 'Por favor, faça login novamente.'
+          }).then(() => location.href = "/auth/");
+          return;
+        }
+
+        if (res.status === 204) {
+          Swal.update({
+            html: `
+              <p>Nenhum registro de acesso encontrado para este link.</p>
+              <div style="margin-top: 20px;">
+                <button onclick="window.location.href='/admin/dash/link/${slug}'" style="padding: 8px 16px; background-color: #007bff; color: white; border: none; border-radius: 4px;">Ver Dashboard Completo</button>
+              </div>
+            `,
+            showConfirmButton: true,
+            confirmButtonText: 'Fechar'
+          });
+          return;
+        }
 
         if (!res.ok) throw new Error('Falha ao buscar logs');
 
