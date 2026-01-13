@@ -367,6 +367,7 @@
     let logsPage = 1;
     const logsPageSize = 50;
     let currentStatsData = null;
+    let currentLinkTitle = null;
 
     // Initial Load
     loadData();
@@ -486,6 +487,7 @@
     function renderInfo(data) {
         const link = data.link;
         if (!link) return;
+        currentLinkTitle = link.title || link.slug;
         
         document.getElementById('link-info').innerHTML = `
             <h2 style="margin-top:0; color:#034a5d;">${link.slug}</h2>
@@ -629,10 +631,47 @@
         }
     }
 
+    function sanitizeFilePart(value) {
+        const str = String(value ?? '').trim();
+        if (!str) return 'sem_titulo';
+        return str
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .replace(/[^a-zA-Z0-9]+/g, '_')
+            .replace(/^_+|_+$/g, '')
+            .replace(/_+/g, '_')
+            .toLowerCase()
+            .slice(0, 80);
+    }
+
+    function getRangeLabel() {
+        const days = document.getElementById('range-select').value;
+        const { from, to } = getDateRange();
+        return `ultimos_${days}_dias_${from}_a_${to}`;
+    }
+
+    function getChartName(key) {
+        const map = {
+            line: 'evolucao_de_cliques',
+            browser: 'navegadores',
+            os: 'sistemas_operacionais',
+            device: 'dispositivos',
+            geo: 'geolocalizacao'
+        };
+        return map[key] || key;
+    }
+
+    function buildExportFileName(key, ext) {
+        const titlePart = sanitizeFilePart(currentLinkTitle || slug);
+        const rangePart = sanitizeFilePart(getRangeLabel());
+        const chartPart = sanitizeFilePart(getChartName(key));
+        return `${titlePart}_${rangePart}_${chartPart}.${ext}`;
+    }
+
     function exportPng(key) {
         if (!charts[key]) return;
         const link = document.createElement('a');
-        link.download = `${slug}-${key}-chart.png`;
+        link.download = buildExportFileName(key, 'png');
         link.href = charts[key].toBase64Image();
         link.click();
     }
@@ -676,7 +715,7 @@
         const encodedUri = encodeURI(csvContent);
         const link = document.createElement("a");
         link.setAttribute("href", encodedUri);
-        link.setAttribute("download", `${slug}-${key}-data.csv`);
+        link.setAttribute("download", buildExportFileName(key, 'csv'));
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
