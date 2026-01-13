@@ -25,6 +25,38 @@
     .header-info a {
         display: inline;
     }
+    .link-kpis {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+        margin-top: 1rem;
+    }
+    .kpi-card {
+        background-color: #f8f9fa;
+        border: 1px solid #eee;
+        border-radius: 10px;
+        padding: 1rem;
+        text-align: center;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+    }
+    .kpi-card .kpi-label {
+        margin: 0;
+        color: #666;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        font-family: 'Araboto', sans-serif;
+    }
+    .kpi-card .kpi-value {
+        font-size: 2rem;
+        font-weight: bold;
+        color: #42b0d5;
+        margin-top: 0.35rem;
+        font-family: 'Araboto-Bold', sans-serif;
+        line-height: 1.1;
+    }
     .grid-charts {
         display: grid;
         grid-template-columns: repeat(2, 1fr);
@@ -146,6 +178,42 @@
         align-items: center;
     }
 
+    @media(max-width: 1420px) {
+        .log-table { box-shadow: none; background: transparent; }
+        .log-table thead { display: none; }
+        .log-table, .log-table tbody, .log-table tr, .log-table td { display: block; width: 100%; }
+        .log-table tr {
+            background: rgb(255, 255, 255);
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            margin-bottom: 12px;
+        }
+        .log-table td {
+            padding: 10px 12px;
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+            text-align: left;
+        }
+        .log-table td:last-child { border-bottom: none; }
+        .log-table td::before {
+            content: attr(data-label);
+            flex: 0 0 34%;
+            font-weight: 600;
+            color: #034a5d;
+        }
+        .log-table td .cell-value {
+            flex: 1;
+            min-width: 0;
+            text-align: left;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+        }
+        .pagination { flex-direction: column; align-items: stretch; gap: 0.75rem; }
+        .pagination button { width: 100%; }
+    }
+
     @media(max-width: 768px) {
         .grid-charts { grid-template-columns: 1fr; }
         .full-width { grid-column: span 1; }
@@ -158,6 +226,13 @@
         .header-info { padding: 1rem; margin-bottom: 1.25rem; }
         .header-info h2 { font-size: 1.25rem; }
         .header-info p { margin: 0.5rem 0; }
+        .link-kpis { grid-template-columns: 1fr; }
+        .kpi-card .kpi-value { font-size: 1.75rem; }
+    }
+
+    @media(max-width: 420px) {
+        .log-table td { flex-direction: column; gap: 6px; }
+        .log-table td::before { flex: none; }
     }
   </style>
 </head>
@@ -255,7 +330,7 @@
 
   <!-- TAB: LOGS -->
   <div id="tab-logs" class="tab-content">
-      <div style="background: white; padding: 1rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+      <div style="border-radius: 8px;">
           <div id="logs-loading" class="spinner" style="display:none;"></div>
           <table class="log-table">
               <thead>
@@ -384,11 +459,11 @@
                 logs.forEach(log => {
                     const tr = document.createElement('tr');
                     tr.innerHTML = `
-                        <td>${new Date(log.timestamp).toLocaleString()}</td>
-                        <td>${log.ip || '-'}</td>
-                        <td>${log.browser || '-'}</td>
-                        <td>${log.os || '-'}</td>
-                        <td>${log.referer || '-'}</td>
+                        <td data-label="Data/Hora"><div class="cell-value">${new Date(log.timestamp).toLocaleString()}</div></td>
+                        <td data-label="IP"><div class="cell-value">${log.ip || '-'}</div></td>
+                        <td data-label="Browser"><div class="cell-value">${log.browser || '-'}</div></td>
+                        <td data-label="OS"><div class="cell-value">${log.os || '-'}</div></td>
+                        <td data-label="Referer"><div class="cell-value">${log.referer || '-'}</div></td>
                     `;
                     tbody.appendChild(tr);
                 });
@@ -416,8 +491,16 @@
             <h2 style="margin-top:0; color:#034a5d;">${link.slug}</h2>
             <p><strong>URL Original:</strong> <a href="${link.original_url}" target="_blank">${link.original_url}</a></p>
             <p><strong>Título:</strong> ${link.title || '-'}</p>
-            <p><strong>Total Cliques (Período):</strong> ${data.clicks_total}</p>
-            <p><strong>IPs Únicos:</strong> ${data.unique_ips}</p>
+            <div class="link-kpis">
+                <div class="kpi-card">
+                    <div class="kpi-label">Total Cliques (Período)</div>
+                    <div class="kpi-value">${Number(data.clicks_total || 0).toLocaleString()}</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-label">IPs Únicos</div>
+                    <div class="kpi-value">${Number(data.unique_ips || 0).toLocaleString()}</div>
+                </div>
+            </div>
         `;
     }
 
