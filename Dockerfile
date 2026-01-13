@@ -11,5 +11,5 @@ COPY . .
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONPATH=/app/src
 
-EXPOSE 5001
-CMD ["python", "-m", "uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "5001", "--lifespan=on", "--log-level", "info"]
+EXPOSE 5000
+CMD ["python", "-m", "uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "5000", "--lifespan=on", "--log-level", "info"]

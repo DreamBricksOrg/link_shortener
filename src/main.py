@@ -12,10 +12,10 @@ from fastapi.staticfiles import StaticFiles
 
 from core.config import settings
 from utils.log_sender import LogSender
-from routes.routes import router as rest_router
 from routes.auth import router as auth_router
 from routes.admin import router as admin_router
 from routes.dash import router as dash_router
+from routes.redirect import router as redirect_router
 
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
@@ -62,7 +62,7 @@ app.add_middleware(
 
 app.mount("/src/static", StaticFiles(directory="src/static"), name="src-static")
 
-app.include_router(rest_router)
+app.include_router(redirect_router)
 app.include_router(auth_router)
 app.include_router(admin_router)
 app.include_router(dash_router)
