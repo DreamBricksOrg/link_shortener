@@ -86,6 +86,15 @@
         padding: 1rem;
         border-radius: 8px;
         box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        align-items: center;
+    }
+    .nav-menu {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        align-items: center;
+        flex: 1;
+        min-width: 0;
     }
     .nav-link {
         text-decoration: none;
@@ -93,7 +102,11 @@
         font-weight: 600;
         padding: 0.5rem 1rem;
         border-radius: 4px;
+        box-sizing: border-box;
+        max-width: 100%;
+        min-width: 0;
     }
+    .nav-link-admin { margin-left: auto; }
     .nav-link.active { background-color: #e3f2fd; color: #0277bd; }
     .nav-link:hover { background-color: #f5f5f5; }
 
@@ -108,7 +121,7 @@
 
     @media (max-width: 1420px) {
       .nav-bar { gap: 0.5rem; }
-      .nav-link { padding: 0.5rem 0.75rem; flex: 1 1 auto; text-align: center; }
+      .nav-link { padding: 0.5rem 0.75rem; flex: 1 1 0; text-align: center; }
       .nav-link-admin { width: 100%; margin-left: 0 !important; }
 
       .filters-bar { flex-direction: column; align-items: stretch; gap: 0.75rem; }
@@ -160,6 +173,12 @@
       .pagination span { text-align: center; }
     }
 
+    @media (max-width: 960px) {
+      .nav-menu { width: 100%; flex-direction: column; gap: 0.5rem; margin-top: 0.25rem; }
+      .nav-link { width: 100%; flex: 0 0 auto; text-align: left; }
+      .nav-link-admin { width: 100%; margin-left: 0 !important; }
+    }
+
     @media (max-width: 420px) {
       .data-table td { flex-direction: column; gap: 6px; }
       .data-table td::before { flex: none; }
@@ -171,10 +190,12 @@
   <h1>Logs de Acesso</h1>
 
   <div class="nav-bar">
-      <a href="/admin/dashboard" class="nav-link">Visão Geral</a>
-      <a href="/admin/dash/links" class="nav-link">Links</a>
-      <a href="/admin/dash/logs" class="nav-link active">Logs de Acesso</a>
-      <a href="/admin/" class="nav-link nav-link-admin" style="margin-left: auto;">Voltar ao Admin</a>
+      <div class="nav-menu" id="nav-menu">
+          <a href="/admin/dashboard" class="nav-link">Visão Geral</a>
+          <a href="/admin/dash/links" class="nav-link">Links</a>
+          <a href="/admin/dash/logs" class="nav-link active">Logs de Acesso</a>
+          <a href="/admin/" class="nav-link nav-link-admin">Voltar ao Admin</a>
+      </div>
   </div>
 
   <div class="filters-bar">
