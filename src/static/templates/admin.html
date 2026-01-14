@@ -185,18 +185,19 @@
               <input type="text" id="cb-${link.id}" value="${link.callback_url || ''}">
             </label>
             
-            <div class="qr-container">
-              ${link.qr_png ? `<a href="${link.qr_png}" download target="_blank" title="Baixar PNG">
-                <img src="${link.qr_png}" alt="QR PNG">
+            <div class="qr-container" id="qr-container-${link.id}">
+              ${link.qr_png ? `<a id="qr-png-a-${link.id}" href="${link.qr_png}" download target="_blank" title="Baixar PNG">
+                <img id="qr-png-img-${link.id}" src="${link.qr_png}" alt="QR PNG">
               </a>` : ''}
-              ${link.qr_svg ? `<a href="${link.qr_svg}" download target="_blank" title="Baixar SVG">
-                <img src="${link.qr_svg}" alt="QR SVG">
+              ${link.qr_svg ? `<a id="qr-svg-a-${link.id}" href="${link.qr_svg}" download target="_blank" title="Baixar SVG">
+                <img id="qr-svg-img-${link.id}" src="${link.qr_svg}" alt="QR SVG">
               </a>` : ''}
             </div>
           </div>
 
           <div class="card-footer">
             <button onclick="showAccessLog('${link.slug}')">📊 Access Log</button>
+            <button onclick="regenerateQr('${link.slug}', '${link.id}')">♻️ Regenerar QR</button>
             <div class="card-actions">
               <button onclick="updateLink('${link.id}')">Salvar</button>
               <button class="btn-delete" onclick="deleteLink('${link.id}')">Excluir</button>
@@ -415,6 +416,113 @@
         } catch (err) {
           Swal.fire('Erro', 'Não foi possível exportar os logs.', 'error');
         }
+    }
+
+    async function regenerateQr(slug, linkId) {
+      const result = await Swal.fire({
+        title: 'Regenerar QR Codes?',
+        html: `
+          <p>Slug: <strong>${slug}</strong></p>
+          <label style="display:flex; gap:8px; align-items:center; justify-content:center; margin-top:10px;">
+            <input id="swal-force" type="checkbox" checked />
+            <span>Forçar sobrescrever arquivos existentes</span>
+          </label>
+        `,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Regenerar',
+        cancelButtonText: 'Cancelar',
+        preConfirm: () => {
+          const force = document.getElementById('swal-force')?.checked ?? true;
+          return { force };
+        }
+      });
+
+      if (!result.isConfirmed) return;
+
+      try {
+        const res = await fetch(`/admin/qr/regenerate`, {
+          method: 'POST',
+          headers: {
+            'Authorization': 'Bearer ' + adminToken,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ slug, force: result.value.force })
+        });
+
+        if (res.status === 401) {
+          Swal.fire({
+            icon: 'error',
+            title: 'Sessão Expirada',
+            text: 'Por favor, faça login novamente.'
+          }).then(() => location.href = "/auth/");
+          return;
+        }
+
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          Swal.fire('Erro', err.detail || 'Não foi possível regenerar os QR codes.', 'error');
+          return;
+        }
+
+        const json = await res.json();
+        const entry = (json.results || []).find(r => r.slug === slug);
+
+        if (!entry || !entry.ok) {
+          Swal.fire('Erro', 'Não foi possível regenerar os QR codes para este link.', 'error');
+          return;
+        }
+
+        const cacheBust = `v=${Date.now()}`;
+        const pngUrl = entry.qr_png ? `${entry.qr_png}${entry.qr_png.includes('?') ? '&' : '?'}${cacheBust}` : null;
+        const svgUrl = entry.qr_svg ? `${entry.qr_svg}${entry.qr_svg.includes('?') ? '&' : '?'}${cacheBust}` : null;
+
+        const container = document.getElementById(`qr-container-${linkId}`);
+        if (container) {
+          if (pngUrl) {
+            let a = document.getElementById(`qr-png-a-${linkId}`);
+            let img = document.getElementById(`qr-png-img-${linkId}`);
+            if (!a || !img) {
+              a = document.createElement('a');
+              a.id = `qr-png-a-${linkId}`;
+              a.download = '';
+              a.target = '_blank';
+              a.title = 'Baixar PNG';
+              img = document.createElement('img');
+              img.id = `qr-png-img-${linkId}`;
+              img.alt = 'QR PNG';
+              a.appendChild(img);
+              container.appendChild(a);
+            }
+            a.href = pngUrl;
+            img.src = pngUrl;
+          }
+
+          if (svgUrl) {
+            let a = document.getElementById(`qr-svg-a-${linkId}`);
+            let img = document.getElementById(`qr-svg-img-${linkId}`);
+            if (!a || !img) {
+              a = document.createElement('a');
+              a.id = `qr-svg-a-${linkId}`;
+              a.download = '';
+              a.target = '_blank';
+              a.title = 'Baixar SVG';
+              img = document.createElement('img');
+              img.id = `qr-svg-img-${linkId}`;
+              img.alt = 'QR SVG';
+              a.appendChild(img);
+              container.appendChild(a);
+            }
+            a.href = svgUrl;
+            img.src = svgUrl;
+          }
+        }
+
+        Swal.fire('Sucesso', `QR regenerado${entry.reason ? ` (${entry.reason})` : ''}.`, 'success');
+
+      } catch (e) {
+        Swal.fire('Erro', 'Falha na comunicação.', 'error');
+      }
     }
 
     loadLinks(true);
