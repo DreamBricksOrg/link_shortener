@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Painel Admin - Gerenciar Links</title>
+  <link rel="stylesheet" href="/src/static/css/admin.css">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <style>
+    /* Reuse dashboard styles */
+    .filters-bar {
+      background: white;
+      padding: 1rem;
+      border-radius: 8px;
+      margin-bottom: 1.5rem;
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      align-items: center;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    
+    .filters-bar input, .filters-bar select {
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+
+    .data-table th, .data-table td {
+      padding: 12px 15px;
+      text-align: left;
+      border-bottom: 1px solid #eee;
+    }
+
+    .data-table th {
+      background-color: #f8f9fa;
+      color: #034a5d;
+      font-weight: 600;
+    }
+
+    .data-table tr:hover {
+      background-color: #f1f1f1;
+    }
+
+    .pagination {
+      display: flex;
+      justify-content: center;
+      gap: 0.5rem;
+      margin-top: 2rem;
+    }
+
+    .pagination button {
+      padding: 8px 16px;
+      border: 1px solid #42b0d5;
+      background: white;
+      color: #42b0d5;
+      cursor: pointer;
+      border-radius: 4px;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+
+    .pagination button:hover:not(:disabled) {
+      background-color: #42b0d5;
+      color: white;
+    }
+
+    .pagination button.active {
+      background-color: #42b0d5;
+      color: white;
+      border-color: #42b0d5;
+    }
+
+    .pagination button:disabled {
+      border-color: #ddd;
+      color: #999;
+      background-color: #f5f5f5;
+      cursor: not-allowed;
+    }
+
+    .nav-bar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        margin-bottom: 2rem;
+        background: white;
+        padding: 1rem;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        align-items: center;
+    }
+    .nav-menu {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        align-items: center;
+        flex: 1;
+        min-width: 0;
+    }
+    .nav-link {
+        text-decoration: none;
+        color: #666;
+        font-weight: 600;
+        padding: 0.5rem 1rem;
+        border-radius: 4px;
+        box-sizing: border-box;
+        max-width: 100%;
+        min-width: 0;
+    }
+    .nav-link-admin { margin-left: auto; }
+    .nav-link.active {
+        background-color: #e3f2fd;
+        color: #0277bd;
+    }
+    .nav-link:hover {
+        background-color: #f5f5f5;
+    }
+
+    @media (max-width: 1420px) {
+      .nav-bar { gap: 0.5rem; }
+      .nav-link { padding: 0.5rem 0.75rem; flex: 1 1 0; text-align: center; }
+      .nav-link-admin { width: 100%; margin-left: 0 !important; }
+
+      .filters-bar { flex-direction: column; align-items: stretch; gap: 0.75rem; }
+      .filters-bar input, .filters-bar select { width: 100%; }
+      #btn-filter { width: 100%; }
+
+      .data-table { box-shadow: none; background: transparent; }
+      .data-table thead { display: none; }
+      .data-table, .data-table tbody, .data-table tr, .data-table td { display: block; width: 100%; }
+      .data-table tr {
+        background: white;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        margin-bottom: 12px;
+      }
+      .data-table td {
+        border-bottom: 1px solid #eee;
+        padding: 10px 12px;
+        display: flex;
+        gap: 12px;
+        align-items: flex-start;
+      }
+      .data-table td:last-child { border-bottom: none; }
+      .data-table td::before {
+        content: attr(data-label);
+        flex: 0 0 34%;
+        font-weight: 600;
+        color: #034a5d;
+      }
+      .data-table td .cell-value {
+        flex: 1;
+        min-width: 0;
+        text-align: left;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+      }
+      .data-table td .cell-value small {
+        display: block;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+      }
+
+      .pagination { flex-direction: column; gap: 0.75rem; }
+      .pagination button { width: 100%; }
+      .pagination span { text-align: center; }
+    }
+
+    @media (max-width: 960px) {
+      .nav-menu { width: 100%; flex-direction: column; gap: 0.5rem; margin-top: 0.25rem; }
+      .nav-link { width: 100%; flex: 0 0 auto; text-align: left; }
+      .nav-link-admin { width: 100%; margin-left: 0 !important; }
+    }
+
+    @media (max-width: 420px) {
+      .data-table td { flex-direction: column; gap: 6px; }
+      .data-table td::before { flex: none; }
+      .data-table td .cell-value { text-align: left; }
+    }
+  </style>
+</head>
+<body>
+  <h1>Gerenciar Links (Dashboard)</h1>
+
+  <div class="nav-bar">
+      <div class="nav-menu" id="nav-menu">
+          <a href="/admin/dashboard" class="nav-link">Visão Geral</a>
+          <a href="/admin/dash/links" class="nav-link active">Links</a>
+          <a href="/admin/dash/logs" class="nav-link">Logs de Acesso</a>
+          <a href="/admin/" class="nav-link nav-link-admin">Voltar ao Admin</a>
+      </div>
+  </div>
+
+  <div class="filters-bar">
+    <input type="text" id="filter-q" placeholder="Buscar slug, título...">
+    <select id="filter-active">
+        <option value="">Status: Todos</option>
+        <option value="true">Ativo</option>
+        <option value="false">Inativo</option>
+    </select>
+    <select id="filter-sort">
+        <option value="clicks_desc">Mais Cliques</option>
+        <option value="last_click_desc">Último Acesso</option>
+        <option value="created_desc">Mais Recentes</option>
+    </select>
+    <select id="filter-range">
+        <option value="7">7 Dias</option>
+        <option value="30">30 Dias</option>
+        <option value="90">90 Dias</option>
+    </select>
+    <button id="btn-filter" style="background-color: #42b0d5; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">Filtrar</button>
+  </div>
+
+  <div id="loading" style="text-align: center; display: none;">Carregando...</div>
+
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Slug</th>
+        <th>Título</th>
+        <th>Cliques (Período)</th>
+        <th>IPs Únicos</th>
+        <th>Último Click</th>
+        <th>Criado em</th>
+        <th>Ações</th>
+      </tr>
+    </thead>
+    <tbody id="links-body">
+      <!-- JS renders here -->
+    </tbody>
+  </table>
+
+  <div class="pagination" id="pagination">
+    <!-- JS renders here -->
+  </div>
+
+  <script>
+    const adminToken = localStorage.getItem('adminToken');
+    if (!adminToken) location.href = '/auth/';
+
+    let currentPage = 1;
+    const pageSize = 20;
+
+    document.getElementById('btn-filter').addEventListener('click', () => {
+        currentPage = 1;
+        loadLinks();
+    });
+
+    async function loadLinks() {
+        const spinner = document.getElementById('loading');
+        const tbody = document.getElementById('links-body');
+        const pagination = document.getElementById('pagination');
+        
+        spinner.style.display = 'block';
+        tbody.innerHTML = '';
+        pagination.innerHTML = '';
+
+        const q = document.getElementById('filter-q').value;
+        const active = document.getElementById('filter-active').value;
+        const sort = document.getElementById('filter-sort').value;
+        const days = document.getElementById('filter-range').value;
+        
+        const toDate = new Date();
+        const fromDate = new Date();
+        fromDate.setDate(toDate.getDate() - days);
+        const toStr = toDate.toISOString().split('T')[0];
+        const fromStr = fromDate.toISOString().split('T')[0];
+
+        let url = `/dash/links?page=${currentPage}&page_size=${pageSize}&sort=${sort}&from=${fromStr}&to=${toStr}`;
+        if (q) url += `&q=${encodeURIComponent(q)}`;
+        if (active) url += `&is_active=${active}`;
+
+        try {
+            const res = await fetch(url, {
+                headers: { 'Authorization': 'Bearer ' + adminToken }
+            });
+            
+            if (res.status === 401) {
+                location.href = '/auth/';
+                return;
+            }
+
+            const data = await res.json();
+            renderTable(data.data);
+            renderPagination(data.page, data.total, data.page_size);
+
+        } catch (err) {
+            console.error(err);
+            Swal.fire('Erro', 'Erro ao carregar links', 'error');
+        } finally {
+            spinner.style.display = 'none';
+        }
+    }
+
+    function renderTable(items) {
+        const tbody = document.getElementById('links-body');
+        if (items.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;">Nenhum link encontrado.</td></tr>';
+            return;
+        }
+
+        items.forEach(item => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td data-label="Slug">
+                    <div class="cell-value">
+                        <a href="/${item.slug}" target="_blank" style="font-weight:bold; text-decoration:none; color:#42b0d5;">${item.slug}</a>
+                    </div>
+                </td>
+                <td data-label="Título/URL">
+                    <div class="cell-value">
+                        <div>${item.title || 'Sem título'}</div>
+                        <small style="color:#888;">${item.original_url}</small>
+                    </div>
+                </td>
+                <td data-label="Cliques (Período)"><div class="cell-value">${item.clicks}</div></td>
+                <td data-label="IPs Únicos"><div class="cell-value">${item.unique_ips}</div></td>
+                <td data-label="Último Click"><div class="cell-value">${item.last_click ? new Date(item.last_click).toLocaleString() : '-'}</div></td>
+                <td data-label="Criado em"><div class="cell-value">${new Date(item.created_at).toLocaleDateString()}</div></td>
+                <td data-label="Ações">
+                    <div class="cell-value">
+                        <button onclick="window.location.href='/admin/dash/link/${item.slug}'" style="padding:4px 8px; cursor:pointer;">Detalhes</button>
+                    </div>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    function renderPagination(page, total, size) {
+        const totalPages = Math.ceil(total / size);
+        const container = document.getElementById('pagination');
+        
+        if (totalPages <= 1) return;
+
+        const prev = document.createElement('button');
+        prev.innerText = 'Anterior';
+        prev.disabled = page === 1;
+        prev.onclick = () => { currentPage--; loadLinks(); };
+        container.appendChild(prev);
+
+        const info = document.createElement('span');
+        info.innerText = ` Pág ${page} de ${totalPages} (Total: ${total}) `;
+        info.style.alignSelf = 'center';
+        container.appendChild(info);
+
+        const next = document.createElement('button');
+        next.innerText = 'Próxima';
+        next.disabled = page === totalPages;
+        next.onclick = () => { currentPage++; loadLinks(); };
+        container.appendChild(next);
+    }
+
+    loadLinks();
+  </script>
+</body>
+</html>

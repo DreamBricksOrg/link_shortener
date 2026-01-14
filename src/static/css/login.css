@@ -1,0 +1,118 @@
+p,
+h1,
+h2,
+label {
+    color: #fff;
+}
+
+label {
+    display: block;
+    width: 100%;
+    margin: .5rem 0;
+    font-family: 'Araboto-Bold', sans-serif;
+}
+
+input,
+button {
+    display: block;
+    margin-bottom: 10px;
+    width: 100%;
+    padding: 8px auto;
+    font-size: 1rem;
+}
+
+pre {
+    background: #c7f1ff;
+    padding: 1rem;
+    white-space: pre-wrap;
+}
+
+.container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    background-color: #c7f1ff;
+}
+
+.content {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    padding: 20px;
+    border: 1px solid #ccc;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    border-radius: 10px;
+    background-color: #42b0d5;
+    width: 500px;
+    max-width: 800px;
+}
+
+.tittle {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    text-align: center;
+    justify-content: center;
+    align-items: center;
+}
+
+.spinner {
+    border: 4px solid rgba(255, 255, 255, 0.3);
+    border-top: 4px solid #ffffff;
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    animation: spin 1s linear infinite;
+    margin: 0 auto;
+}
+
+.spinner-container {
+    display: none;
+    margin-top: 10px;
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+button {
+    font-family: 'Araboto-Bold', sans-serif;
+    text-transform: uppercase;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    background-color: #fff;
+    color: #42b0d5;
+}
+
+button:hover {
+    background-color: #e0e0e0;
+}
+
+form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+form input {
+    padding: 10px 20px;
+    font-size: 1rem;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    outline: none;
+    transition: border-color 0.3s ease;
+    color: #034a5d;
+}
+
+form input:focus {
+    border-color: #42b0d5;
+}

@@ -14,5 +14,6 @@ python-multipart
 Pillow
 PyJWT 
 bcrypt
+tzdata
 python-dateutil
 logcenter-sdk

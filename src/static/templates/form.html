@@ -1,70 +1,92 @@
 <!DOCTYPE html>
-<html>
+<html lang="pt-BR">
 <head>
-  <title>Link Shortener</title>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Novo Link Encurtado</title>
   <style>
-    body { font-family: sans-serif; max-width: 600px; margin: 40px auto; }
-    input, textarea, button {
-      display: block;
-      margin-bottom: 10px;
-      width: 100%;
-      padding: 8px;
-      font-size: 1rem;
-      box-sizing: border-box;
-    }
-    textarea { min-height: 90px; resize: vertical; }
-    #result { margin-top: 20px; }
-    img { max-width: 200px; margin-right: 10px; }
-    .qrcodes { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
-    .hint { font-size: 0.9rem; color: #666; margin-top: -6px; margin-bottom: 10px; }
+    @import url('/src/static/css/global.css');
+    @import url('/src/static/css/login.css');
+    @import url('/src/static/css/form.css');
   </style>
 </head>
 <body>
-  <h1>🔗 Encurtador de Links</h1>
+  <div class="container">
+    <div class="content">
+      <div class="tittle">
+        <h1>Novo Link</h1>
+        <h2>Preencha os dados abaixo</h2>
+      </div>
 
-  <form id="shorten-form">
-    <input type="text" name="name" placeholder="Título (ex: LEGO campanha X)" required />
-    <input type="url" name="url" placeholder="URL original" required />
-    <input type="url" name="callback_url" placeholder="Callback URL (opcional)" />
-    <input type="text" name="slug" placeholder="Slug personalizado (opcional)" />
+      <form id="shorten-form">
+        <label>
+          Titulo
+          <input type="text" name="name" placeholder="Ex: Campanha Instagram" required />
+        </label>
+        <label>
+          URL Original
+          <input type="url" name="url" placeholder="https://..." required />
+        </label>
+        <label>
+          Notas (opcional)
+          <input type="text" name="notes" placeholder="Ex: UTM, canal, observações..." />
+        </label>
+        <label>
+          Callback URL (opcional)
+          <input type="url" name="callback_url" placeholder="https://..." />
+        </label>
+        <label>
+          Slug Personalizado (opcional)
+          <input type="text" name="slug" />
+        </label>
+        <label>
+          Expira em (opcional)
+          <input type="datetime-local" name="expires_at" />
+        </label>
+        
+        <button type="submit">Gerar Link</button>
+        <button type="button" id="admin-back" class="btn-secondary">Voltar</button>
+      </form>
 
-    <textarea name="notes" placeholder="Notas (opcional)"></textarea>
+      <div class="spinner-container" id="spinner-container">
+        <div class="spinner"></div>
+      </div>
 
-    <input type="datetime-local" id="expires_at" placeholder="Expira em (opcional)" />
-    <div class="hint">Expira em: opcional. Se preencher, o backend salva como datetime.</div>
+      <div id="result"></div>
+    </div>
+  </div>
 
-    <button type="submit">Gerar Link</button>
-    <button type="button" id="admin-back">Voltar</button>
-  </form>
-
-  <div id="result"></div>
-
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script>
     const adminToken = localStorage.getItem('adminToken');
     if (!adminToken) {
-      alert('Faça login como admin primeiro.');
-      location.href = '/auth/';
+      Swal.fire({
+        icon: 'warning',
+        title: 'Acesso Negado',
+        text: 'Faça login como admin primeiro.',
+        confirmButtonText: 'Ir para Login'
+      }).then(() => {
+        location.href = '/auth/';
+      });
     }
+    
+    document.getElementById("admin-back").addEventListener("click", () => { window.location.href = "/admin/";});
+    
+    document.getElementById("shorten-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      
+      const spinner = document.getElementById('spinner-container');
+      const resultEl = document.getElementById("result");
+      const submitBtn = e.target.querySelector('button[type="submit"]');
+      
+      spinner.style.display = 'block';
+      resultEl.innerHTML = '';
+      submitBtn.disabled = true;
 
-    document.getElementById("admin-back")
-      .addEventListener("click", () => { window.location.href = "/admin/"; });
+      const form = e.target;
+      const data = new FormData(form);
 
-    document.getElementById("shorten-form")
-      .addEventListener("submit", async (e) => {
-        e.preventDefault();
-        const form = e.target;
-
-        const data = new FormData(form);
-
-        const expiresInput = document.getElementById("expires_at").value;
-        if (expiresInput) {
-          const dt = new Date(expiresInput);
-          if (!isNaN(dt.getTime())) {
-            data.append("expires_at", dt.toISOString());
-          }
-        }
-
+      try {
         const response = await fetch("/admin/shorten", {
           method: "POST",
           headers: { 'Authorization': 'Bearer ' + adminToken },
@@ -72,51 +94,71 @@
         });
 
         if (response.status === 401) {
-          alert("Sessão expirada.");
-          return location.href = "/auth/";
+          Swal.fire({
+            icon: 'error',
+            title: 'Sessão Expirada',
+            text: 'Por favor, faça login novamente.'
+          }).then(() => location.href = "/auth/");
+          return;
         }
 
-        const resultEl = document.getElementById("result");
-
         if (!response.ok) {
-          let errText = "Erro ao criar link.";
-          try {
-            const err = await response.json();
-            errText = err.detail || JSON.stringify(err);
-          } catch (_) {}
-          resultEl.innerHTML = `<p style="color:red">Erro: ${errText}</p>`;
+          const err = await response.json();
+          Swal.fire({
+            icon: 'error',
+            title: 'Erro ao criar link',
+            text: err.detail || 'Verifique os dados e tente novamente.'
+          });
           return;
         }
 
         const result = await response.json();
         const link = `${window.location.origin}/${result.slug}`;
-
-        const bust = `t=${Date.now()}`;
-        const pngPreview = result.qr_png ? (result.qr_png.includes("?") ? `${result.qr_png}&${bust}` : `${result.qr_png}?${bust}`) : null;
-        const svgPreview = result.qr_svg ? (result.qr_svg.includes("?") ? `${result.qr_svg}&${bust}` : `${result.qr_svg}?${bust}`) : null;
-
+        
         resultEl.innerHTML = `
-          <p><strong>✅ Link criado:</strong> <a href="${link}" target="_blank">${link}</a></p>
-          <div class="qrcodes">
-            <div>
-              <p>QR PNG:</p>
-              ${result.qr_png ? `
-                <a href="${result.qr_png}" download target="_blank">
-                  <img src="${pngPreview}" alt="QR PNG">
+          <div class="result-box">
+            <p>✅ Link criado com sucesso!</p>
+            <p style="margin: 10px 0; font-size: 1.1rem;">
+              <a href="${link}" target="_blank">${link}</a>
+            </p>
+            <div class="qrcodes">
+              <div>
+                <p>PNG</p>
+                <a href="${result.qr_png}" download title="Baixar PNG">
+                  <img src="${result.qr_png}" alt="QR PNG">
                 </a>
-              ` : `<p style="color:#666">—</p>`}
-            </div>
-            <div>
-              <p>QR SVG:</p>
-              ${result.qr_svg ? `
-                <a href="${result.qr_svg}" download target="_blank">
-                  <img src="${svgPreview}" alt="QR SVG">
+              </div>
+              <div>
+                <p>SVG</p>
+                <a href="${result.qr_svg}" download title="Baixar SVG">
+                  <img src="${result.qr_svg}" alt="QR SVG">
                 </a>
-              ` : `<p style="color:#666">—</p>`}
+              </div>
             </div>
           </div>
         `;
-      });
+        
+        Swal.fire({
+          icon: 'success',
+          title: 'Sucesso!',
+          text: 'Link encurtado criado.',
+          timer: 1500,
+          showConfirmButton: false
+        });
+        
+        // Optional: clear form or keep it? Keeping it allows creating similar links easily.
+        
+      } catch (error) {
+        Swal.fire({
+          icon: 'error',
+          title: 'Erro de Conexão',
+          text: 'Não foi possível contatar o servidor.'
+        });
+      } finally {
+        spinner.style.display = 'none';
+        submitBtn.disabled = false;
+      }
+    });
   </script>
 </body>
 </html>
