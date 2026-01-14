@@ -560,12 +560,12 @@ async def regenerate_qr_codes(payload: RegenerateQrRequest = Body(...)):
             if "/" in qr_png_rel:
                 qr_png_url = f"{base_url}/{qr_png_rel.lstrip('/')}"
             else:
-                qr_png_url = f"{base_url}/src/static/{qr_png_rel}"
+                qr_png_url = f"{base_url}/{qr_png_rel}"
 
             if "/" in qr_svg_rel:
                 qr_svg_url = f"{base_url}/{qr_svg_rel.lstrip('/')}"
             else:
-                qr_svg_url = f"{base_url}/src/static/{qr_svg_rel}"
+                qr_svg_url = f"{base_url}/{qr_svg_rel}"
 
             res = await db.links.update_one(
                 {"_id": doc["_id"]},

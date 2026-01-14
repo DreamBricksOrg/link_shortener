@@ -16,3 +16,4 @@ PyJWT
 bcrypt
 tzdata
 python-dateutil
+logcenter-sdk
