@@ -19,4 +19,4 @@ services:
 
 volumes:
   qr_static:
-    name: link_shortener_qr_static/qrs
+    name: link_shortener_qr_static
