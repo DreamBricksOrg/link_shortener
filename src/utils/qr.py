@@ -6,7 +6,7 @@ from core.config import settings
 def generate_qr(slug: str):
     url = f"{settings.BASE_URL}/{slug}"
 
-    STATIC_PATH = Path("src/static")
+    STATIC_PATH = Path("src/static/qrs")
 
     png_path = STATIC_PATH / f"{slug}.png"
     svg_path = STATIC_PATH / f"{slug}.svg"

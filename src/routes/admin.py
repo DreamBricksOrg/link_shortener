@@ -426,7 +426,7 @@ async def delete_link(link_id: str = Path(..., description="ID do link a ser exc
     await db.links.delete_one({"_id": oid})
 
     for ext in ["png", "svg"]:
-        path = f"./src/static/{slug}.{ext}"
+        path = f"./src/static/qrs/{slug}.{ext}"
         try:
             os.remove(path)
             log.info("qr-code-deleted", path=path)
@@ -505,7 +505,7 @@ async def export_access_logs(slug: str):
 async def regenerate_qr_codes(payload: RegenerateQrRequest = Body(...)):
     """
     Regenera QR codes para um ou vários slugs.
-    - Cria/overwrite /app/src/static/{slug}.png e .svg
+    - Cria/overwrite /app/src/static/qrs/{slug}.png e .svg
     - Atualiza o link: is_active=true, status=valid, qr_png/qr_svg, updated_at
     """
     if not payload.slug and not payload.slugs:
@@ -533,12 +533,12 @@ async def regenerate_qr_codes(payload: RegenerateQrRequest = Body(...)):
             continue
 
         try:
-            png_path = f"/app/src/static/{slug}.png"
-            svg_path = f"/app/src/static/{slug}.svg"
+            png_path = f"/app/src/static/qrs/{slug}.png"
+            svg_path = f"/app/src/static/qrs/{slug}.svg"
 
             if not payload.force and os.path.exists(png_path) and os.path.exists(svg_path):
-                qr_png = f"{base_url}/src/static/{slug}.png"
-                qr_svg = f"{base_url}/src/static/{slug}.svg"
+                qr_png = f"{base_url}/src/static/qrs/{slug}.png"
+                qr_svg = f"{base_url}/src/static/qrs/{slug}.svg"
 
                 res = await db.links.update_one(
                     {"_id": doc["_id"]},
