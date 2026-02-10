@@ -355,7 +355,7 @@
         } else {
           const rows = logs.slice(0, 50).map(log => `
             <tr>
-              <td>${new Date(log.created_at || Date.now()).toLocaleString()}</td>
+              <td>${new Date(log.timestamp || Date.now()).toLocaleString()}</td>
               <td>${log.ip || '-'}</td>
               <td>${log.browser || '-'}</td>
               <td>${log.os || '-'}</td>
