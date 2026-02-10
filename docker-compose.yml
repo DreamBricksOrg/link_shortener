@@ -15,7 +15,7 @@ services:
     ports:
       - "5000:5000"
     volumes:
-      - qr_static:/app/src/static
+      - qr_static:/app/src/static/qrs
 
 volumes:
   qr_static:
