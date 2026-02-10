@@ -498,13 +498,15 @@
                 });
             }
             
-            // Pagination Logic
-            document.getElementById('page-info').textContent = `Página ${logsPage}`;
-            document.getElementById('btn-prev').disabled = logsPage === 1;
-            // Crude check: if we got fewer items than page size, it's the last page
-            document.getElementById('btn-next').disabled = logs.length < logsPageSize;
+           // Pagination Logic
+            const totalItems = json.total || 0;
+            const totalPages = Math.ceil(totalItems / logsPageSize) || 1;
+            document.getElementById('page-info').textContent = `Pág ${logsPage} de ${totalPages} (Total: ${totalItems})`;
 
-        } catch(e) {
+            document.getElementById('btn-prev').disabled = logsPage === 1;
+            document.getElementById('btn-next').disabled = logsPage >= totalPages;
+
+        } catch (e) {
             console.error(e);
             Swal.fire('Erro', 'Falha ao carregar logs', 'error');
         } finally {
