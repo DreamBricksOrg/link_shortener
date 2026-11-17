@@ -1,4 +1,4 @@
-fastapi
+fastapi==0.125.0
 uvicorn
 motor
 shortuuid
@@ -16,4 +16,4 @@ PyJWT
 bcrypt
 tzdata
 python-dateutil
-logcenter-sdk
+logcenter-sdk==0.2.0

@@ -1,0 +1,10 @@
+.env
+.git
+venv/
+.venv/
+__pycache__/
+*.pyc
+.logcenter/
+docs/
+tests/
+src/static/qrs/

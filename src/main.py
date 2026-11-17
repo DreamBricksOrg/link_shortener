@@ -69,7 +69,6 @@ async def lifespan(app: FastAPI):
             status="OK",
             tags=["startup"],
             data={"env": settings.APP_ENV, "version": "0.1-dev"},
-            spool_on_fail=False,
         )
 
     asyncio.create_task(_delayed_startup_log())
@@ -84,10 +83,9 @@ async def lifespan(app: FastAPI):
             status="OK",
             tags=["shutdown"],
             data={"env": settings.APP_ENV, "version": "0.1-dev"},
-            spool_on_fail=False
         )
     finally:
-        await sender.stop_background_flush()
+        sender.stop_background_flush_thread()
 
 
 BASE_DIR = Path(__file__).resolve().parent
