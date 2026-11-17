@@ -1,0 +1,67 @@
+/* DreamBricks — Color tokens
+   Base palette extracted from Brandbook v1.1 (page 4):
+   #ffffff / #c7f1ff / #52cdef / #42b0d5 / #034a5d
+   Neutrals + semantic colors are intentional additions (not in brandbook),
+   derived in oklch from the brand blue so they stay harmonious. */
+
+:root {
+  /* ---- Brand blues (from brandbook) ---- */
+  --db-blue-50: #c7f1ff;   /* lightest tint — "631 C" */
+  --db-blue-300: #52cdef;  /* bright accent — "305 C" */
+  --db-blue-500: #42b0d5;  /* primary brand blue — "4160 C" */
+  --db-blue-900: #034a5d;  /* deep ink blue — "635 C" */
+  --db-white: #ffffff;
+
+  /* Extra mid-steps (intentional addition, interpolated in oklch for UI needs) */
+  --db-blue-100: oklch(from var(--db-blue-50) calc(l - 0.04) c h);
+  --db-blue-200: oklch(from var(--db-blue-300) calc(l + 0.09) calc(c * 0.7) h);
+  --db-blue-400: oklch(from var(--db-blue-300) calc(l - 0.06) c h);
+  --db-blue-600: oklch(from var(--db-blue-500) calc(l - 0.09) c h);
+  --db-blue-700: oklch(from var(--db-blue-500) calc(l - 0.18) c h);
+  --db-blue-800: oklch(from var(--db-blue-900) calc(l + 0.08) c h);
+
+  /* ---- Neutrals (intentional addition): slate tinted toward the brand's deep blue ---- */
+  --db-slate-25:  oklch(0.99 0.003 230);
+  --db-slate-50:  oklch(0.97 0.006 230);
+  --db-slate-100: oklch(0.94 0.010 230);
+  --db-slate-200: oklch(0.89 0.014 230);
+  --db-slate-300: oklch(0.80 0.018 230);
+  --db-slate-400: oklch(0.65 0.020 230);
+  --db-slate-500: oklch(0.52 0.022 230);
+  --db-slate-600: oklch(0.42 0.024 230);
+  --db-slate-700: oklch(0.33 0.026 230);
+  --db-slate-800: oklch(0.24 0.028 230);
+  --db-slate-900: oklch(0.16 0.028 230);
+
+  /* ---- Semantic (intentional addition, harmonized in oklch) ---- */
+  --db-success-500: oklch(0.62 0.14 155);
+  --db-success-100: oklch(0.94 0.05 155);
+  --db-warning-500: oklch(0.78 0.15 80);
+  --db-warning-100: oklch(0.95 0.06 80);
+  --db-danger-500: oklch(0.58 0.20 25);
+  --db-danger-100: oklch(0.94 0.06 25);
+  --db-info-500: var(--db-blue-500);
+  --db-info-100: var(--db-blue-50);
+
+  /* ---- Semantic aliases (what components should consume) ---- */
+  --surface-page: var(--db-slate-50);
+  --surface-card: var(--db-white);
+  --surface-sunken: var(--db-slate-100);
+  --surface-brand: var(--db-blue-500);
+  --surface-brand-strong: var(--db-blue-900);
+  --surface-overlay: oklch(0.16 0.028 230 / 0.5);
+
+  --border-subtle: var(--db-slate-200);
+  --border-default: var(--db-slate-300);
+  --border-strong: var(--db-slate-400);
+  --border-brand: var(--db-blue-500);
+
+  --text-primary: var(--db-slate-900);
+  --text-secondary: var(--db-slate-500);
+  --text-tertiary: var(--db-slate-400);
+  --text-on-brand: var(--db-white);
+  --text-link: var(--db-blue-600);
+  --text-brand: var(--db-blue-600);
+
+  --focus-ring: var(--db-blue-300);
+}

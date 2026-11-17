@@ -1,0 +1,14 @@
+<!-- @dsCard group="Colors" viewport="700x130" name="Semantic Aliases" subtitle="Surface / border / text tokens components should consume" -->
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body{margin:0;font-family:var(--font-mono);font-size:11px;background:var(--surface-page);}
+  .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:14px;box-sizing:border-box;}
+  .card{background:var(--surface-card);border:1px solid var(--border-default);border-radius:var(--radius-md);padding:10px;box-shadow:var(--shadow-sm);}
+  .card b{display:block;font-family:var(--font-body);font-size:12px;color:var(--text-primary);margin-bottom:4px;}
+</style>
+<div class="grid">
+  <div class="card"><b style="color:var(--text-primary)">text-primary</b>text-primary</div>
+  <div class="card"><b style="color:var(--text-secondary)">text-secondary</b>text-secondary</div>
+  <div class="card"><b style="color:var(--text-link)">text-link</b>text-link</div>
+  <div class="card" style="background:var(--surface-brand);border-color:var(--surface-brand)"><b style="color:var(--text-on-brand)">surface-brand</b><span style="color:var(--text-on-brand)">text-on-brand</span></div>
+</div>

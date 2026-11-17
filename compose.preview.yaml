@@ -1,0 +1,19 @@
+name: link-shortener-preview
+
+services:
+  mongo:
+    image: mongo:7
+    container_name: link-shortener-preview-mongo
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:27022:27017"
+    volumes:
+      - preview_mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+volumes:
+  preview_mongo_data:

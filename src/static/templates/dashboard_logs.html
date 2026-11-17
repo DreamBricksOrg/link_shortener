@@ -119,7 +119,7 @@
       vertical-align: bottom;
     }
 
-    @media (max-width: 1420px) {
+    @media (max-width: 900px) {
       .nav-bar { gap: 0.5rem; }
       .nav-link { padding: 0.5rem 0.75rem; flex: 1 1 0; text-align: center; }
       .nav-link-admin { width: 100%; margin-left: 0 !important; }
@@ -185,27 +185,16 @@
       .data-table td .cell-value { text-align: left; }
     }
   </style>
+  <link rel="stylesheet" href="/src/static/css/dreambricks.css">
 </head>
 <body>
+  <header class="app-header"><a class="app-brand" href="/admin/" aria-label="DreamBricks, painel"><img src="/src/static/design_system/assets/logos/dreambricks-horizontal-onlight.svg" alt="DreamBricks"></a><nav class="nav-bar" aria-label="Navegação principal"><div class="nav-menu"><a href="/admin/dashboard" class="nav-link"><svg class="db-icon" aria-hidden="true"><use href="/src/static/images/icons.svg#overview"></use></svg>Visão geral</a><a href="/admin/dash/links" class="nav-link"><svg class="db-icon" aria-hidden="true"><use href="/src/static/images/icons.svg#link"></use></svg>Links</a><a href="/admin/dash/logs" class="nav-link active" aria-current="page"><svg class="db-icon" aria-hidden="true"><use href="/src/static/images/icons.svg#activity"></use></svg>Acessos</a><a href="/admin/form/" class="nav-link"><svg class="db-icon" aria-hidden="true"><use href="/src/static/images/icons.svg#plus"></use></svg>Novo link</a><a href="/admin/" class="nav-link nav-link-admin"><svg class="db-icon" aria-hidden="true"><use href="/src/static/images/icons.svg#filter"></use></svg>Admin</a></div></nav></header>
   <h1>Logs de Acesso</h1>
 
-  <div class="nav-bar">
-      <div class="nav-menu" id="nav-menu">
-          <a href="/admin/dashboard" class="nav-link">Visão Geral</a>
-          <a href="/admin/dash/links" class="nav-link">Links</a>
-          <a href="/admin/dash/logs" class="nav-link active">Logs de Acesso</a>
-          <a href="/admin/" class="nav-link nav-link-admin">Voltar ao Admin</a>
-      </div>
-  </div>
-
-  <div class="filters-bar">
-    <input type="text" id="filter-slug" placeholder="Filtrar por slug...">
-    <select id="filter-range">
-        <option value="7">7 Dias</option>
-        <option value="30">30 Dias</option>
-        <option value="90">90 Dias</option>
-    </select>
-    <button id="btn-filter" style="background-color: #42b0d5; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">Filtrar</button>
+  <div class="filters-bar" role="search" aria-label="Filtrar acessos">
+    <label class="filter-field search-field"><span>Slug do link</span><input type="search" id="filter-slug" placeholder="Buscar por slug" autocomplete="off"></label>
+    <label class="filter-field "><span>Período</span><select id="filter-range"><option value="7">7 dias</option><option value="30">30 dias</option><option value="90">90 dias</option></select></label>
+    <button id="btn-filter" type="button"><svg class="db-icon" aria-hidden="true"><use href="/src/static/images/icons.svg#search"></use></svg> Buscar</button>
   </div>
 
   <div id="loading" style="text-align: center; display: none;">Carregando...</div>
@@ -243,6 +232,7 @@
     let currentPage = 1;
     const pageSize = 50;
 
+    document.getElementById('filter-slug').addEventListener('keydown', event => { if (event.key === 'Enter') document.getElementById('btn-filter').click(); });
     document.getElementById('btn-filter').addEventListener('click', () => {
         currentPage = 1;
         loadLogs();

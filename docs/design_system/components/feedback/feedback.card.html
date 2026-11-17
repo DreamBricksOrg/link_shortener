@@ -1,0 +1,32 @@
+<!-- @dsCard group="Components" viewport="700x340" name="Feedback" subtitle="Dialog, Toast, Tooltip" -->
+<link rel="stylesheet" href="../../styles.css">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../../_ds_bundle.js"></script>
+<style>body{margin:0;font-family:var(--font-body);background:var(--surface-page);}#root{padding:20px;}</style>
+<div id="root"></div>
+<script type="text/babel">
+const { Dialog, Toast, Tooltip, Button, IconButton } = window.DreamBricksDesignSystem_6b66b1;
+function Demo(){
+  const [open, setOpen] = React.useState(false);
+  return (
+    <div style={{display:'flex', flexDirection:'column', gap:20}}>
+      <div style={{display:'flex', gap:12, alignItems:'center'}}>
+        <Button onClick={()=>setOpen(true)}>Open dialog</Button>
+        <Tooltip label="Delete project"><IconButton icon={<span>🗑</span>} label="Delete"/></Tooltip>
+      </div>
+      <div style={{display:'flex', flexDirection:'column', gap:10}}>
+        <Toast tone="success" title="Project saved" message="All changes synced."/>
+        <Toast tone="warning" title="Deadline approaching" message="3 days left on Q3 rebrand."/>
+        <Toast tone="danger" title="Sync failed" message="Check your connection." onClose={()=>{}}/>
+      </div>
+      <Dialog open={open} onClose={()=>setOpen(false)} title="Archive project?"
+        actions={<><Button variant="secondary" onClick={()=>setOpen(false)}>Cancel</Button><Button variant="danger" onClick={()=>setOpen(false)}>Archive</Button></>}>
+        This can be undone from Settings within 30 days.
+      </Dialog>
+    </div>
+  );
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<Demo/>);
+</script>

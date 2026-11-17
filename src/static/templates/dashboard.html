@@ -121,19 +121,21 @@
         }
     }
   </style>
+  <link rel="stylesheet" href="/src/static/css/dreambricks.css">
 </head>
 <body>
-  <h1>Dashboard de Acessos</h1>
+  <header class="app-header"><a class="app-brand" href="/admin/" aria-label="DreamBricks, painel"><img src="/src/static/design_system/assets/logos/dreambricks-horizontal-onlight.svg" alt="DreamBricks"></a><nav class="nav-bar" aria-label="Navegação principal"><div class="nav-menu"><a href="/admin/dashboard" class="nav-link active" aria-current="page"><svg class="db-icon" aria-hidden="true"><use href="/src/static/images/icons.svg#overview"></use></svg>Visão geral</a><a href="/admin/dash/links" class="nav-link"><svg class="db-icon" aria-hidden="true"><use href="/src/static/images/icons.svg#link"></use></svg>Links</a><a href="/admin/dash/logs" class="nav-link"><svg class="db-icon" aria-hidden="true"><use href="/src/static/images/icons.svg#activity"></use></svg>Acessos</a><a href="/admin/form/" class="nav-link"><svg class="db-icon" aria-hidden="true"><use href="/src/static/images/icons.svg#plus"></use></svg>Novo link</a><a href="/admin/" class="nav-link nav-link-admin"><svg class="db-icon" aria-hidden="true"><use href="/src/static/images/icons.svg#filter"></use></svg>Admin</a></div></nav></header>
+  <h1>Dashboard de acessos</h1>
 
   <div class="controls" style="justify-content: space-between;">
-    <button onclick="window.location.href='/admin/'">⬅ Voltar para Admin</button>
+    <a class="nav-link" href="/admin/"><svg class="db-icon" aria-hidden="true"><use href="/src/static/images/icons.svg#arrow-left"></use></svg> Voltar ao admin</a>
     <div class="date-filter">
-        <select id="range-select">
+        <label class="filter-field"><span>Período</span><select id="range-select">
             <option value="7">Últimos 7 dias</option>
             <option value="30">Últimos 30 dias</option>
             <option value="90">Últimos 90 dias</option>
-        </select>
-        <button id="refresh-btn">Atualizar</button>
+        </select></label>
+        <button id="refresh-btn"><svg class="db-icon" aria-hidden="true"><use href="/src/static/images/icons.svg#refresh"></use></svg> Atualizar</button>
     </div>
   </div>
 

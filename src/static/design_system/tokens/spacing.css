@@ -1,0 +1,39 @@
+/* DreamBricks — Spacing, radius, shadow, motion tokens (intentional additions —
+   not defined in the brandbook, derived to fit dashboard UI density). */
+
+:root {
+  /* Spacing scale (4px base grid) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-20: 80px;
+  --space-24: 96px;
+
+  /* Radius — brandbook shows soft, generously rounded panels (see logo
+     "protection area" plate corners); UI radii echo that softness. */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-pill: 999px;
+
+  /* Shadows — soft, cool-toned (tinted with brand ink blue, not pure black) */
+  --shadow-sm: 0 1px 2px oklch(0.16 0.028 230 / 0.06), 0 1px 1px oklch(0.16 0.028 230 / 0.04);
+  --shadow-md: 0 4px 10px oklch(0.16 0.028 230 / 0.08), 0 2px 4px oklch(0.16 0.028 230 / 0.05);
+  --shadow-lg: 0 12px 24px oklch(0.16 0.028 230 / 0.12), 0 4px 8px oklch(0.16 0.028 230 / 0.06);
+  --shadow-focus: 0 0 0 3px oklch(0.72 0.13 230 / 0.35);
+
+  /* Motion */
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1); /* @kind other */
+  --ease-out: cubic-bezier(0, 0, 0.2, 1); /* @kind other */
+  --duration-fast: 120ms; /* @kind other */
+  --duration-base: 180ms; /* @kind other */
+  --duration-slow: 280ms; /* @kind other */
+}

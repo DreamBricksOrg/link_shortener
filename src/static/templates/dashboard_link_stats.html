@@ -261,21 +261,14 @@
         .log-table td::before { flex: none; }
     }
   </style>
+  <link rel="stylesheet" href="/src/static/css/dreambricks.css">
 </head>
 <body>
+  <header class="app-header"><a class="app-brand" href="/admin/" aria-label="DreamBricks, painel"><img src="/src/static/design_system/assets/logos/dreambricks-horizontal-onlight.svg" alt="DreamBricks"></a><nav class="nav-bar" aria-label="Navegação principal"><div class="nav-menu"><a href="/admin/dashboard" class="nav-link"><svg class="db-icon" aria-hidden="true"><use href="/src/static/images/icons.svg#overview"></use></svg>Visão geral</a><a href="/admin/dash/links" class="nav-link active" aria-current="page"><svg class="db-icon" aria-hidden="true"><use href="/src/static/images/icons.svg#link"></use></svg>Links</a><a href="/admin/dash/logs" class="nav-link"><svg class="db-icon" aria-hidden="true"><use href="/src/static/images/icons.svg#activity"></use></svg>Acessos</a><a href="/admin/form/" class="nav-link"><svg class="db-icon" aria-hidden="true"><use href="/src/static/images/icons.svg#plus"></use></svg>Novo link</a><a href="/admin/" class="nav-link nav-link-admin"><svg class="db-icon" aria-hidden="true"><use href="/src/static/images/icons.svg#filter"></use></svg>Admin</a></div></nav></header>
   <h1>Detalhes do Link</h1>
 
-  <div class="nav-bar">
-      <div class="nav-menu" id="nav-menu">
-          <a href="/admin/dashboard" class="nav-link">Visão Geral</a>
-          <a href="/admin/dash/links" class="nav-link">Links</a>
-          <a href="/admin/dash/logs" class="nav-link">Logs de Acesso</a>
-          <a href="/admin/" class="nav-link nav-link-admin">Voltar ao Admin</a>
-      </div>
-  </div>
-
   <div class="header-info" id="link-info">
-      Loading info...
+      Carregando informações...
   </div>
 
   <div class="top-controls" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
@@ -284,11 +277,11 @@
           <button class="tab-btn" onclick="switchTab('logs')">Logs de Acesso</button>
       </div>
 
-      <select id="range-select" style="padding: 8px; border-radius: 4px; border: 1px solid #ddd;">
+      <label class="filter-field" style="max-width: 210px"><span>Período</span><select id="range-select">
           <option value="7">Últimos 7 dias</option>
           <option value="30">Últimos 30 dias</option>
           <option value="90">Últimos 90 dias</option>
-      </select>
+      </select></label>
   </div>
 
   <hr style="margin-bottom: 2rem; border: 0; border-top: 1px solid #eee;">
@@ -589,7 +582,7 @@
                 labels: data.browsers.map(b => b.key || 'Desconhecido'),
                 datasets: [{
                     data: data.browsers.map(b => b.count),
-                    backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF']
+                    backgroundColor: ['#034a5d', '#42b0d5', '#52cdef', '#89dbf3', '#c7f1ff']
                 }]
             },
             options: {
@@ -608,7 +601,7 @@
                 labels: data.os.map(o => o.key || 'Desconhecido'),
                 datasets: [{
                     data: data.os.map(o => o.count),
-                    backgroundColor: ['#FF9F40', '#FFCD56', '#4BC0C0', '#36A2EB', '#9966FF']
+                    backgroundColor: ['#034a5d', '#42b0d5', '#52cdef', '#89dbf3', '#c7f1ff']
                 }]
             },
             options: {
@@ -629,7 +622,7 @@
                 datasets: [{
                     label: 'Dispositivos',
                     data: data.device_type.map(d => d.count),
-                    backgroundColor: ['#36A2EB', '#FF6384', '#FFCE56']
+                    backgroundColor: ['#034a5d', '#42b0d5', '#52cdef']
                 }]
             },
             options: {

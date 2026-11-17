@@ -177,3 +177,4 @@ src/static/output
 src/static/*.png
 src/static/*.svg
 src/static/qrs
+.logcenter/

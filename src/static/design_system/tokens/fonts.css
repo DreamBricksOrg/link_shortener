@@ -1,0 +1,4 @@
+/* Webfont loading — Poppins substituted for the brandbook's Araboto (see
+   typography.css for rationale). Loaded from Google Fonts CDN so the whole
+   weight range brandbook + UI needs is available. */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap');

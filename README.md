@@ -1,6 +1,29 @@
 
 # 🔗 Link Shortener - FastAPI Project
 
+## Design system
+
+O design system DreamBricks está em [`docs/design_system/`](docs/design_system/readme.md). O frontend usa os tokens e o logo servidos de `src/static/design_system/`, com ajustes de interface em `src/static/css/dreambricks.css`. Ao atualizar o sistema de origem, sincronize os tokens e assets usados em produção.
+
+## Prévia local com dados fictícios
+
+O arquivo `compose.preview.yaml` inicia um MongoDB dedicado, com volume próprio e porta acessível somente em `127.0.0.1:27022`. Ele não usa o MongoDB Atlas nem as outras bases locais.
+
+No PowerShell, a partir da raiz do projeto:
+
+```powershell
+docker compose -f compose.preview.yaml up -d
+$env:PYTHONPATH = (Resolve-Path src).Path
+$env:MONGO_URI = 'mongodb://127.0.0.1:27022'
+$env:MONGO_DB = 'link_shortener_preview'
+$env:BASE_URL = 'http://127.0.0.1:5000'
+$env:PREVIEW_PASSWORD = '<escolha-uma-senha-local>'
+.\venv\Scripts\python.exe src\scripts\seed_preview.py
+.\venv\Scripts\python.exe -m uvicorn src.main:app --host 127.0.0.1 --port 5000
+```
+
+Acesse `http://127.0.0.1:5000/auth/` com o usuário `preview` e a senha escolhida na primeira execução do seed. O script cria sete links fictícios, acessos de exemplo e seus QR codes; execuções posteriores preservam a senha e não duplicam links ou acessos.
+
 Este é um projeto de encurtador de links interno, desenvolvido com **FastAPI**, **MongoDB Atlas** e **Structlog**, que permite:
 
 - Criar links curtos com base em URLs fornecidas

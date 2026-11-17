@@ -1,0 +1,13 @@
+<!-- @dsCard group="Spacing" viewport="700x180" name="Spacing in use" subtitle="Card padding + gap example at space-4/space-6" -->
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body{margin:0;font-family:var(--font-body);padding:16px;box-sizing:border-box;background:var(--surface-page);}
+  .card{background:var(--surface-card);border:1px solid var(--border-subtle);border-radius:var(--radius-lg);padding:var(--space-6);box-shadow:var(--shadow-sm);display:flex;gap:var(--space-4);align-items:center;}
+  .dot{width:40px;height:40px;border-radius:var(--radius-md);background:var(--db-blue-100);flex-shrink:0;}
+  .card h4{margin:0 0 var(--space-2);font-size:var(--text-base);color:var(--text-primary);}
+  .card p{margin:0;font-size:var(--text-sm);color:var(--text-secondary);}
+</style>
+<div class="card">
+  <div class="dot"></div>
+  <div><h4>space-6 padding</h4><p>space-4 gap between icon and text · space-2 between heading and body</p></div>
+</div>

@@ -6,18 +6,21 @@
   <title>Painel Admin - Links Encurtados</title>
   <link rel="stylesheet" href="/src/static/css/admin.css">
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <link rel="stylesheet" href="/src/static/css/dreambricks.css">
 </head>
 <body>
-  <h1>Admin de Links Encurtados</h1>
+  <header class="app-header"><a class="app-brand" href="/admin/" aria-label="DreamBricks, painel"><img src="/src/static/design_system/assets/logos/dreambricks-horizontal-onlight.svg" alt="DreamBricks"></a><nav class="nav-bar" aria-label="Navegação principal"><div class="nav-menu"><a href="/admin/dashboard" class="nav-link"><svg class="db-icon" aria-hidden="true"><use href="/src/static/images/icons.svg#overview"></use></svg>Visão geral</a><a href="/admin/dash/links" class="nav-link"><svg class="db-icon" aria-hidden="true"><use href="/src/static/images/icons.svg#link"></use></svg>Links</a><a href="/admin/dash/logs" class="nav-link"><svg class="db-icon" aria-hidden="true"><use href="/src/static/images/icons.svg#activity"></use></svg>Acessos</a><a href="/admin/form/" class="nav-link"><svg class="db-icon" aria-hidden="true"><use href="/src/static/images/icons.svg#plus"></use></svg>Novo link</a><a href="/admin/" class="nav-link nav-link-admin active" aria-current="page"><svg class="db-icon" aria-hidden="true"><use href="/src/static/images/icons.svg#filter"></use></svg>Admin</a></div></nav></header>
+  <h1>Admin de links</h1>
 
   <div class="controls">
-    <button id="shortener-btn">Encurtador</button>
-    <button id="reload-btn">Carregar</button>
-    <button id="export-btn" hidden>Exportar CSV</button>
-    <button id="links-btn">Links</button>
+    <button id="shortener-btn" class="button-primary"><svg class="db-icon" aria-hidden="true"><use href="/src/static/images/icons.svg#plus"></use></svg> Novo link</button>
+    <button id="reload-btn"><svg class="db-icon" aria-hidden="true"><use href="/src/static/images/icons.svg#refresh"></use></svg> Recarregar</button>
+    <button id="export-btn" hidden><svg class="db-icon" aria-hidden="true"><use href="/src/static/images/icons.svg#download"></use></svg> Exportar CSV</button>
+    <button id="links-btn"><svg class="db-icon" aria-hidden="true"><use href="/src/static/images/icons.svg#link"></use></svg> Ver dashboard</button>
   </div>
 
-  <div class="filter-form" hidden>
+  <div class="filter-toolbar"><h2>Filtros avançados</h2><button id="toggle-filters-btn" type="button" aria-expanded="false" aria-controls="advanced-filters"><svg class="db-icon" aria-hidden="true"><use href="/src/static/images/icons.svg#filter"></use></svg> Mostrar filtros</button></div>
+  <div class="filter-form" id="advanced-filters" hidden>
     <label>Slug: <input type="text" id="filter-slug"></label>
     <label>Título: <input type="text" id="filter-tittle"></label>
     <label>Notas: <input type="text" id="filter-notes"></label>
@@ -25,7 +28,8 @@
     <label>Callback URL: <input type="text" id="filter-callback"></label>
     <label>De: <input type="date" id="filter-date-from"></label>
     <label>Até: <input type="date" id="filter-date-to"></label>
-    <button id="apply-filters-btn">Aplicar Filtros</button>
+    <button id="apply-filters-btn"><svg class="db-icon" aria-hidden="true"><use href="/src/static/images/icons.svg#search"></use></svg> Aplicar filtros</button>
+    <button id="clear-filters-btn" type="button">Limpar filtros</button>
   </div>
 
   <div id="loading-spinner" class="spinner" style="display: none;"></div>
@@ -63,6 +67,18 @@
     let currentPage = 1;
     const pageSize = 9; // 3 rows of 3 columns
 
+    document.getElementById('toggle-filters-btn').addEventListener('click', () => {
+      const panel = document.getElementById('advanced-filters');
+      panel.hidden = !panel.hidden;
+      const toggle = document.getElementById('toggle-filters-btn');
+      toggle.setAttribute('aria-expanded', String(!panel.hidden));
+      toggle.innerHTML = panel.hidden ? '<svg class="db-icon" aria-hidden="true"><use href="/src/static/images/icons.svg#filter"></use></svg> Mostrar filtros' : '<svg class="db-icon" aria-hidden="true"><use href="/src/static/images/icons.svg#filter"></use></svg> Ocultar filtros';
+    });
+    document.getElementById('clear-filters-btn').addEventListener('click', () => {
+      Object.keys(filters).forEach(id => document.getElementById(id).value = '');
+      currentPage = 1; loadLinks(false);
+    });
+    document.querySelectorAll('#advanced-filters input').forEach(input => input.addEventListener('keydown', event => { if (event.key === 'Enter') document.getElementById('apply-filters-btn').click(); }));
     document.getElementById('reload-btn').addEventListener('click', () => {
       currentPage = 1;
       loadLinks(true);
@@ -128,9 +144,7 @@
         updatePagination(list.length);
 
         if (showControls) {
-          document.querySelector('.filter-form').hidden = false;
           document.getElementById('export-btn').hidden = false;
-          document.getElementById('reload-btn').textContent = "Recarregar";
         }
       } catch (error) {
         Swal.fire('Erro', 'Falha ao carregar links.', 'error');
@@ -196,11 +210,11 @@
           </div>
 
           <div class="card-footer">
-            <button onclick="showAccessLog('${link.slug}')">📊 Access Log</button>
-            <button onclick="regenerateQr('${link.slug}', '${link.id}')">♻️ Regenerar QR</button>
+            <button onclick="showAccessLog('${link.slug}')"><svg class="db-icon" aria-hidden="true"><use href="/src/static/images/icons.svg#activity"></use></svg> Acessos</button>
+            <button onclick="regenerateQr('${link.slug}', '${link.id}')"><svg class="db-icon" aria-hidden="true"><use href="/src/static/images/icons.svg#refresh"></use></svg> Regenerar QR</button>
             <div class="card-actions">
-              <button onclick="updateLink('${link.id}')">Salvar</button>
-              <button class="btn-delete" onclick="deleteLink('${link.id}')">Excluir</button>
+              <button onclick="updateLink('${link.id}')"><svg class="db-icon" aria-hidden="true"><use href="/src/static/images/icons.svg#save"></use></svg> Salvar</button>
+              <button class="btn-delete" onclick="deleteLink('${link.id}')"><svg class="db-icon" aria-hidden="true"><use href="/src/static/images/icons.svg#trash"></use></svg> Excluir</button>
             </div>
             <div class="status" id="status-${link.id}" style="text-align: center; height: 1.2rem;"></div>
           </div>
