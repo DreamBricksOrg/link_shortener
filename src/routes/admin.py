@@ -4,6 +4,7 @@ import shortuuid
 import csv
 import io
 import os
+import re
 
 from typing import List, Optional, Any, Dict
 from bson import ObjectId
@@ -131,6 +132,7 @@ async def list_links(
     is_active: Optional[bool] = Query(None),
     date_from: Optional[date] = Query(None),
     date_to: Optional[date] = Query(None),
+    group_base: Optional[str] = Query(None),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
 ) -> Any:
@@ -160,6 +162,10 @@ async def list_links(
             end = datetime.combine(date_to, time.max).replace(tzinfo=timezone.utc)
             dt_filter["$lte"] = end
         filters["created_at"] = dt_filter
+
+    if group_base:
+        base_filter = {"original_url": {"$regex": rf"^{re.escape(group_base)}(?:\?|$)"}}
+        filters = {"$and": [filters, base_filter]}
 
     skip = (page - 1) * page_size
 
@@ -202,6 +208,70 @@ async def list_links(
         "page_size": page_size,
         "total": total,
     }
+
+
+@router.get(
+    "/link-groups",
+    dependencies=[Depends(admin_required)],
+    response_model=Any,
+)
+async def list_link_groups(
+    slug: Optional[str] = Query(None),
+    title: Optional[str] = Query(None),
+    original_url: Optional[str] = Query(None),
+    callback_url: Optional[str] = Query(None),
+    notes: Optional[str] = Query(None),
+    tag: Optional[str] = Query(None),
+    is_active: Optional[bool] = Query(None),
+    date_from: Optional[date] = Query(None),
+    date_to: Optional[date] = Query(None),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+) -> Any:
+    filters: Dict[str, Any] = {}
+    for field, value in (
+        ("slug", slug), ("title", title), ("original_url", original_url),
+        ("callback_url", callback_url), ("notes", notes),
+    ):
+        if value:
+            filters[field] = {"$regex": value, "$options": "i"}
+    if tag:
+        filters["tags"] = tag
+    if is_active is not None:
+        filters["is_active"] = is_active
+    if date_from or date_to:
+        date_filter: Dict[str, Any] = {}
+        if date_from:
+            date_filter["$gte"] = datetime.combine(date_from, time.min).replace(tzinfo=timezone.utc)
+        if date_to:
+            date_filter["$lte"] = datetime.combine(date_to, time.max).replace(tzinfo=timezone.utc)
+        filters["created_at"] = date_filter
+
+    pipeline = [
+        {"$match": filters},
+        {"$project": {
+            "base_url": {"$arrayElemAt": [{"$split": ["$original_url", "?"]}, 0]},
+            "created_at": 1,
+        }},
+        {"$group": {
+            "_id": "$base_url",
+            "count": {"$sum": 1},
+            "latest": {"$max": "$created_at"},
+        }},
+        {"$sort": {"latest": -1, "_id": 1}},
+        {"$facet": {
+            "data": [
+                {"$skip": (page - 1) * page_size},
+                {"$limit": page_size},
+                {"$project": {"_id": 0, "base_url": "$_id", "count": 1}},
+            ],
+            "meta": [{"$count": "total"}],
+        }},
+    ]
+    result = await db.links.aggregate(pipeline).to_list(length=1)
+    facet = result[0] if result else {"data": [], "meta": []}
+    total = facet["meta"][0]["total"] if facet["meta"] else 0
+    return {"data": facet["data"], "page": page, "page_size": page_size, "total": total}
 
 
 @router.get(

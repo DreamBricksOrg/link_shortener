@@ -36,6 +36,7 @@ Este é um projeto de encurtador de links interno, desenvolvido com **FastAPI**,
 ✨ Funcionalidades Extras
 
 - Interface admin com listagem, filtros e exportação de CSV
+- No painel Admin, visão agrupada por endereço antes do `?`: URLs com parâmetros diferentes ficam recolhidas no mesmo grupo, com contagem de links. Abra o grupo para editar cada link; use **Individuais** para ver todos os cartões separados. Filtros e paginação funcionam nas duas visões.
 - Deleção segura: logs são mantidos com slug versionado
 - QR Codes salvos em volume persistente via Docker
 

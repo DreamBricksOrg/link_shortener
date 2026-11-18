@@ -32,6 +32,14 @@
     <button id="clear-filters-btn" type="button">Limpar filtros</button>
   </div>
 
+  <div class="view-toolbar" aria-label="Modo de exibição dos links">
+    <div class="view-switch" role="group" aria-label="Exibição">
+      <button id="grouped-view-btn" type="button" aria-pressed="true">Agrupados</button>
+      <button id="individual-view-btn" type="button" aria-pressed="false">Individuais</button>
+    </div>
+    <p id="view-description">Links com o mesmo endereço base aparecem juntos.</p>
+  </div>
+
   <div id="loading-spinner" class="spinner" style="display: none;"></div>
   <div id="links-container" class="links-grid"></div>
 
@@ -65,7 +73,32 @@
     };
 
     let currentPage = 1;
-    const pageSize = 9; // 3 rows of 3 columns
+    const pageSize = 9;
+    let groupedView = true;
+    let requestSequence = 0;
+
+    function filterParams(page = currentPage, size = pageSize) {
+      const params = new URLSearchParams({ page, page_size: size });
+      for (const [id, key] of Object.entries(filters)) {
+        const value = document.getElementById(id).value;
+        if (value) params.append(key, value);
+      }
+      return params;
+    }
+
+    for (const [id, grouped] of [['grouped-view-btn', true], ['individual-view-btn', false]]) {
+      document.getElementById(id).addEventListener('click', () => {
+        if (groupedView === grouped) return;
+        groupedView = grouped;
+        currentPage = 1;
+        document.getElementById('grouped-view-btn').setAttribute('aria-pressed', String(grouped));
+        document.getElementById('individual-view-btn').setAttribute('aria-pressed', String(!grouped));
+        document.getElementById('view-description').textContent = grouped
+          ? 'Links com o mesmo endereço base aparecem juntos.'
+          : 'Todos os links aparecem em cartões separados.';
+        loadLinks(false);
+      });
+    }
 
     document.getElementById('toggle-filters-btn').addEventListener('click', () => {
       const panel = document.getElementById('advanced-filters');
@@ -104,6 +137,8 @@
     });
 
     async function loadLinks(showControls) {
+      const sequence = ++requestSequence;
+      const mode = groupedView;
       const spinner = document.getElementById('loading-spinner');
       const container = document.getElementById('links-container');
       const pagination = document.getElementById('pagination');
@@ -112,19 +147,13 @@
       container.innerHTML = '';
       pagination.hidden = true;
 
-      const params = new URLSearchParams();
-      params.append('page', currentPage);
-      params.append('page_size', pageSize);
-      
-      for (const [id, key] of Object.entries(filters)) {
-        const val = document.getElementById(id).value;
-        if (val) params.append(key, val);
-      }
+      const params = filterParams();
 
       try {
-        const res = await fetch(`/admin/links?${params}`, {
+        const res = await fetch(`${mode ? '/admin/link-groups' : '/admin/links'}?${params}`, {
           headers: { 'Authorization': 'Bearer ' + adminToken }
         });
+        if (sequence !== requestSequence) return;
 
         if (res.status === 401) {
           Swal.fire({
@@ -135,31 +164,115 @@
           return;
         }
 
+        if (!res.ok) throw new Error(`Falha ao buscar links (${res.status})`);
+
         const json = await res.json();
-        // Assume API returns { data: [...], total: ... } or just list. 
-        // Adapting based on typical pagination. If just list, we handle it.
-        const list = Array.isArray(json) ? json : (json.data || []);
+        if (json.total > 0 && currentPage > 1 && (currentPage - 1) * pageSize >= json.total) {
+          currentPage--;
+          return loadLinks(showControls);
+        }
+        const list = json.data || [];
         
-        renderLinks(list);
-        updatePagination(list.length);
+        if (mode) renderGroups(list);
+        else renderLinks(list);
+        updatePagination(json.total || 0);
 
         if (showControls) {
           document.getElementById('export-btn').hidden = false;
         }
       } catch (error) {
+        if (sequence !== requestSequence) return;
         Swal.fire('Erro', 'Falha ao carregar links.', 'error');
         console.error(error);
       } finally {
-        spinner.style.display = 'none';
-        pagination.hidden = false;
+        if (sequence === requestSequence) spinner.style.display = 'none';
       }
     }
 
-    function updatePagination(itemsCount) {
-      document.getElementById('page-info').textContent = `Página ${currentPage}`;
+    function updatePagination(total) {
+      const pages = Math.max(1, Math.ceil(total / pageSize));
+      document.getElementById('page-info').textContent = `Página ${currentPage} de ${pages}`;
       document.getElementById('prev-page-btn').disabled = currentPage === 1;
-      // If we received fewer items than page size, it's the last page
-      document.getElementById('next-page-btn').disabled = itemsCount < pageSize;
+      document.getElementById('next-page-btn').disabled = currentPage >= pages;
+      document.getElementById('pagination').hidden = total <= pageSize;
+    }
+
+    function renderGroups(groups) {
+      const container = document.getElementById('links-container');
+      container.replaceChildren();
+      if (!groups.length) {
+        container.innerHTML = '<p class="links-empty">Nenhum link encontrado.</p>';
+        return;
+      }
+      groups.forEach(group => {
+        const details = document.createElement('details');
+        details.className = 'link-group';
+        const summary = document.createElement('summary');
+        const heading = document.createElement('span');
+        heading.className = 'link-group-heading';
+        const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        icon.setAttribute('class', 'db-icon');
+        icon.setAttribute('aria-hidden', 'true');
+        const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+        use.setAttribute('href', '/src/static/images/icons.svg#link');
+        icon.appendChild(use);
+        const label = document.createElement('span');
+        label.className = 'link-group-url';
+        label.textContent = group.base_url || 'Sem endereço';
+        heading.append(icon, label);
+        const count = document.createElement('span');
+        count.className = 'link-group-count';
+        count.textContent = `${group.count} ${group.count === 1 ? 'link' : 'links'}`;
+        summary.append(heading, count);
+        const body = document.createElement('div');
+        body.className = 'link-group-body';
+        body.dataset.page = '0';
+        details.append(summary, body);
+        details.addEventListener('toggle', () => {
+          if (details.open && body.dataset.page === '0') loadGroupLinks(group.base_url, body);
+        });
+        container.appendChild(details);
+      });
+    }
+
+    async function loadGroupLinks(baseUrl, body) {
+      if (body.hasAttribute('aria-busy')) return;
+      const page = Number(body.dataset.page) + 1;
+      const params = filterParams(page, pageSize);
+      params.set('group_base', baseUrl);
+      body.setAttribute('aria-busy', 'true');
+      const oldButton = body.querySelector('.group-more');
+      if (oldButton) oldButton.remove();
+      try {
+        const res = await fetch(`/admin/links?${params}`, {
+          headers: { 'Authorization': 'Bearer ' + adminToken }
+        });
+        if (!res.ok) throw new Error(`Falha ao carregar grupo (${res.status})`);
+        const json = await res.json();
+        const grid = body.querySelector('.group-links') || document.createElement('div');
+        grid.className = 'group-links';
+        if (!grid.isConnected) body.appendChild(grid);
+        json.data.forEach(link => grid.appendChild(createLinkCard(link)));
+        body.dataset.page = String(page);
+        if (page * pageSize < json.total) {
+          const more = document.createElement('button');
+          more.className = 'group-more';
+          more.type = 'button';
+          more.textContent = 'Carregar mais links';
+          more.addEventListener('click', () => loadGroupLinks(baseUrl, body));
+          body.appendChild(more);
+        }
+      } catch (error) {
+        const retry = oldButton || document.createElement('button');
+        retry.className = 'group-more';
+        retry.type = 'button';
+        retry.textContent = 'Tentar carregar novamente';
+        if (!oldButton) retry.addEventListener('click', () => loadGroupLinks(baseUrl, body));
+        body.appendChild(retry);
+        console.error(error);
+      } finally {
+        body.removeAttribute('aria-busy');
+      }
     }
 
     function renderLinks(list) {
@@ -167,14 +280,18 @@
       c.innerHTML = "";
       
       if (list.length === 0) {
-        c.innerHTML = '<p style="grid-column: 1/-1; text-align: center;">Nenhum link encontrado.</p>';
+        c.innerHTML = '<p class="links-empty">Nenhum link encontrado.</p>';
         return;
       }
 
-      list.forEach(link => {
+      list.forEach(link => c.appendChild(createLinkCard(link)));
+    }
+
+    function createLinkCard(link) {
         const div = document.createElement('div');
         div.className = 'card';
         div.id = `link-${link.id}`;
+        div.dataset.originalUrl = link.original_url || '';
         div.innerHTML = `
           <div class="card-header">
             <span class="slug-title">${link.slug}</span>
@@ -219,8 +336,7 @@
             <div class="status" id="status-${link.id}" style="text-align: center; height: 1.2rem;"></div>
           </div>
         `;
-        c.appendChild(div);
-      });
+        return div;
     }
 
     async function updateLink(id) {
@@ -246,6 +362,9 @@
         if (res.ok) {
           el.textContent = "✔️ Atualizado!";
           setTimeout(() => el.textContent = "", 2000);
+          if (groupedView && params.get('original_url') !== btn.closest('.card').dataset.originalUrl) {
+            loadLinks(false);
+          }
         } else {
           el.textContent = "❌ Erro ao atualizar.";
           Swal.fire('Erro', 'Não foi possível atualizar o link.', 'error');
@@ -278,7 +397,7 @@
           });
 
           if (res.ok) {
-            document.getElementById(`link-${id}`).remove();
+            loadLinks(false);
             Swal.fire('Excluído!', 'O link foi removido.', 'success');
           } else {
             Swal.fire('Erro', 'Não foi possível excluir o link.', 'error');
